@@ -4,7 +4,7 @@ c       declare variables
         implicit none
         character*40 file_pulse
         integer npts, nmax, u, i, p, k, j, f, n, g, npts1, nmin, mpad
-        parameter (nmax = 2000, u = 21, n = 22)
+        parameter (nmax = 9000, u = 21, n = 22)
         real*8 omega, damping, time(nmax), accel(nmax), response(nmax),
      1         dt, df, freq(nmax) 
         complex cu(nmax)
