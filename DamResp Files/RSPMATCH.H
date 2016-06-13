@@ -1,0 +1,4 @@
+      integer MAXPTS, MAX_MATCH, MAXGROUP, MAXPARAM, MAX_FREQ,
+     1        MAX_DAMP
+      parameter ( MAXPTS=35000,MAX_MATCH=350,MAXGROUP=10,MAXPARAM=5 )
+      parameter ( MAX_FREQ=351,MAX_DAMP=10 )
