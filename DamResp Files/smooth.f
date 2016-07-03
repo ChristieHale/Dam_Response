@@ -140,3 +140,26 @@ c           normalize weights to sum to 1, partial window
       end
  
 c ----------------------------------------------------------------------
+
+      subroutine addsmooth(WinType, Win_len, fasOrig, npts1, fasSmooth, faslnSmooth)
+
+      implicit none
+      include 'max_dims.H'
+
+      integer WinType, Win_len, npts1 
+      real Win(MAXPTS), fasOrig(MAXPTS), fasSmooth(MAXPTS), faslnSmooth(MAXPTS)
+ 
+c       get window for smoothing
+        if (WinType .eq. 1) then
+          call Box(Win_len,Win) 
+        elseif (WinType .eq. 2) then
+          call Hanning(Win_len,Win)
+        elseif (WinType .eq. 3) then  
+          call Hamming(Win_len,Win)
+        endif
+
+c       convolve window with fasRock
+        call convolve(fasOrig, npts1, Win, Win_len, fasSmooth, faslnSmooth)                   
+
+      return
+      end

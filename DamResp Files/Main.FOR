@@ -5,8 +5,8 @@
  
       integer a, b, c, d, e, f, g
       parameter (a=10, b=11, c=12, d=13, e=14, f=37, g=38)
-      integer WinType, Win_len    
-      integer nFiles, iFile, j, npts, i, npts1
+      integer WinType, Win_len, test    
+      integer nFiles, iFile, j, npts, i, npts1, count1, count2
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS)
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
@@ -14,15 +14,28 @@
       real fasDam2Sm(MAXPTS), lnfasDam2Sm(MAXPTS)
       real fasDam3Sm(MAXPTS), lnfasDam3Sm(MAXPTS)
       real fasDam4Sm(MAXPTS), lnfasDam4Sm(MAXPTS)
+      real fasRockSmx(MAXPTS), lnfasRockSmx(MAXPTS)
+      real fasDam1Smx(MAXPTS), lnfasDam1Smx(MAXPTS)
+      real fasDam2Smx(MAXPTS), lnfasDam2Smx(MAXPTS)
+      real fasDam3Smx(MAXPTS), lnfasDam3Smx(MAXPTS)
+      real fasDam4Smx(MAXPTS), lnfasDam4Smx(MAXPTS)      
       real TF1Sm(MAXPTS), TF2Sm(MAXPTS), TF3Sm(MAXPTS), TF4Sm(MAXPTS)
+      real TF1Smx(MAXPTS), TF2Smx(MAXPTS), TF3Smx(MAXPTS), TF4Smx(MAXPTS)
       real TF1(MAXPTS), TF2(MAXPTS), TF3(MAXPTS), TF4(MAXPTS), dt, time, df, pga, pi
       real fTFmax1, fTFmax2, fTFmax3, fTFmax4, ffmax1, ffmax2, ffmax3, ffMax4
+      real fTFmax1x, fTFmax2x, fTFmax3x, fTFmax4x, ffmax1x, ffmax2x, ffmax3x, ffMax4x
       real flow1, flow2, flow3, flow4
+      real flow1x, flow2x, flow3x, flow4x
       real fhigh1, fhigh2, fhigh3, fhigh4
+      real fhigh1x, fhigh2x, fhigh3x, fhigh4x
       real sTFmax1, sTFmax2, sTFmax3, sTFmax4
+      real sTFmax1x, sTFmax2x, sTFmax3x, sTFmax4x
       real sfMax1, sfMax2, sfMax3, sfMax4
+      real sfMax1x, sfMax2x, sfMax3x, sfMax4x
       real slow1, slow2, slow3, slow4
+      real slow1x, slow2x, slow3x, slow4x
       real shigh1, shigh2, shigh3, shigh4
+      real shigh1x, shigh2x, shigh3x, shigh4x
       parameter (pi=3.14159)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
@@ -38,10 +51,13 @@ c       read in run file
         read (a,*) WinType
         read (a,*) Win_len         
 
+c       write headers for first and second mode info files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
         write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 '
         
 c       loop over number of files (rock time histories)    
+        count1 = 0
+        count2 = 0
         do iFile=1,nFiles
 
 c         read in rock time history
@@ -91,14 +107,21 @@ c         compute unsmooth transfer function
             TF4(i) = fasDam4(i) / fasRock(i)
           enddo
 
-c         smooth FFT
+c         smooth FFT, first pass
           call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
           call smooth(WinType, Win_len, fasDam1, npts1, fasDam1Sm, lnfasDam1Sm)
           call smooth(WinType, Win_len, fasDam2, npts1, fasDam2Sm, lnfasDam2Sm)
           call smooth(WinType, Win_len, fasDam3, npts1, fasDam3Sm, lnfasDam3Sm)
           call smooth(WinType, Win_len, fasDam4, npts1, fasDam4Sm, lnfasDam4Sm)
 
-c         compute smoothed transfer function
+c         smooth FFT, second pass
+          call smooth(WinType, Win_len, fasRockSm, npts1, fasRockSmx, lnfasRockSmx)
+          call smooth(WinType, Win_len, fasDam1Sm, npts1, fasDam1Smx, lnfasDam1Smx)
+          call smooth(WinType, Win_len, fasDam2Sm, npts1, fasDam2Smx, lnfasDam2Smx)
+          call smooth(WinType, Win_len, fasDam3Sm, npts1, fasDam3Smx, lnfasDam3Smx)
+          call smooth(WinType, Win_len, fasDam4Sm, npts1, fasDam4Smx, lnfasDam4Smx)
+          
+c         compute smoothed transfer function, from first pass
           do i=1,npts1/2
             TF1Sm(i) = fasDam1Sm(i) / fasRockSm(i)
             TF2Sm(i) = fasDam2Sm(i) / fasRockSm(i)
@@ -106,38 +129,69 @@ c         compute smoothed transfer function
             TF4Sm(i) = fasDam4Sm(i) / fasRockSm(i)
           enddo
 
-c         find first and second mode
+c         compute smoothed transfer function, from second pass
+          do i=1,npts1/2
+            TF1Smx(i) = fasDam1Smx(i) / fasRockSmx(i)
+            TF2Smx(i) = fasDam2Smx(i) / fasRockSmx(i)
+            TF3Smx(i) = fasDam3Smx(i) / fasRockSmx(i)
+            TF4Smx(i) = fasDam4Smx(i) / fasRockSmx(i)
+          enddo   
+
+c         find first and second mode, from first pass
           call mode(TF1Sm, df, fTFmax1, ffmax1, flow1, fhigh1, sTFmax1, sfmax1, slow1, shigh1)
           call mode(TF2Sm, df, fTFmax2, ffmax2, flow2, fhigh2, sTFmax2, sfmax2, slow2, shigh2)
           call mode(TF3Sm, df, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3)
           call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
+
+c         find first and second mode, from second pass
+          call mode(TF1Smx, df, fTFmax1x, ffmax1x, flow1x, fhigh1x, sTFmax1x, sfmax1x, slow1x, shigh1x)
+          call mode(TF2Smx, df, fTFmax2x, ffmax2x, flow2x, fhigh2x, sTFmax2x, sfmax2x, slow2x, shigh2x)
+          call mode(TF3Smx, df, fTFmax3x, ffmax3x, flow3x, fhigh3x, sTFmax3x, sfmax3x, slow3x, shigh3x)
+          call mode(TF4Smx, df, fTFmax4x, ffmax4x, flow4x, fhigh4x, sTFmax4x, sfmax4x, slow4x, shigh4x)
+
+c         throw out this record if no second mode found (temporary), first pass
+          if (sfmax1 .eq. 999 .or. sfmax2 .eq. 999 .or. sfmax3 .eq. 999 .or. sfmax4 .eq. 999) then
+            count1 = count1 + 1
+            test = 1
+          endif
+          
+c         throw out this record if no second mode found (temporary), second pass
+          if (sfmax1x .eq. 999 .or. sfmax2x .eq. 999 .or. sfmax3x .eq. 999 .or. sfmax4x .eq. 999) then
+            count2 = count2 + 1
+            test = 1
+          endif
+          
+          if (test .eq. 1) then
+            goto 10
+          endif
  
 c         print smooth transfer functions to file, freq domain
-c          write (39+iFile,*) rockfile
-c          write (39+iFile,*) 'Dam location ', 'TFmax ', 'freqMax ', 'freqlow ', 'freqhigh'
-c          write (39+iFile,*) '1 ', TFmax1, freqMax1, freqlow1, freqhigh1
-c          write (39+iFile,*) '2 ', TFmax2, freqMax2, freqlow2, freqhigh2
-c          write (39+iFile,*) '3 ', TFmax3, freqMax3, freqlow3, freqhigh3
-c          write (39+iFile,*) '4 ', TFmax4, freqMax4, freqlow4, freqhigh4
-c          write (39+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm'
-c          do i=1, npts1/2
-c            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i)
-c          enddo
-c          close(39+iFile) 
+          write (39+iFile,*) rockfile
+          write (39+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm'
+          do i=1, npts1/2
+            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i)
+          enddo
+          close(39+iFile) 
 
 c         print unsmoothed transfer functions to file, freq domain
-c          write (49+iFile,*) rockfile, pga
-c          write (49+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
-c          do i=1, npts1/2
-c            write (49+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
-c          enddo
-c          close(49+iFile) 
+          write (49+iFile,*) rockfile, pga
+          write (49+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
+          do i=1, npts1/2
+            write (49+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
+          enddo
+          close(49+iFile) 
 
 c        print all pga, TFmax, freqMax, freqlow, freqhigh to one file
           write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
           write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
-          
+
+   10   continue   
         enddo
+        
+        write (*,*) 'count1 ', count1
+        write (*,*) 'count2 ', count2
+        pause
+        
       end
 
 c ------------------------------------------------------------------
