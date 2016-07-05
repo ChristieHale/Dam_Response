@@ -3,39 +3,32 @@
       implicit none
       include 'max_dims.H'
  
-      integer a, b, c, d, e, f, g
-      parameter (a=10, b=11, c=12, d=13, e=14, f=37, g=38)
-      integer WinType, Win_len, test    
-      integer nFiles, iFile, j, npts, i, npts1, count1, count2
+      integer a, b, c, d, e, f, g, h
+      parameter (a=10, b=11, c=12, d=13, e=14, f=37, g=38, h=39)
+      integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
+      integer Win_len4, xflag1, xflag2, xflag3, xflag4   
+      integer nFiles, iFile, i, j, k, l, npts, npts1, npts2, loopmax
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS)
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
       real fasDam1Sm(MAXPTS), lnfasDam1Sm(MAXPTS)
       real fasDam2Sm(MAXPTS), lnfasDam2Sm(MAXPTS)
       real fasDam3Sm(MAXPTS), lnfasDam3Sm(MAXPTS)
-      real fasDam4Sm(MAXPTS), lnfasDam4Sm(MAXPTS)
-      real fasRockSmx(MAXPTS), lnfasRockSmx(MAXPTS)
-      real fasDam1Smx(MAXPTS), lnfasDam1Smx(MAXPTS)
-      real fasDam2Smx(MAXPTS), lnfasDam2Smx(MAXPTS)
-      real fasDam3Smx(MAXPTS), lnfasDam3Smx(MAXPTS)
-      real fasDam4Smx(MAXPTS), lnfasDam4Smx(MAXPTS)      
+      real fasDam4Sm(MAXPTS), lnfasDam4Sm(MAXPTS)     
       real TF1Sm(MAXPTS), TF2Sm(MAXPTS), TF3Sm(MAXPTS), TF4Sm(MAXPTS)
-      real TF1Smx(MAXPTS), TF2Smx(MAXPTS), TF3Smx(MAXPTS), TF4Smx(MAXPTS)
-      real TF1(MAXPTS), TF2(MAXPTS), TF3(MAXPTS), TF4(MAXPTS), dt, time, df, pga, pi
-      real fTFmax1, fTFmax2, fTFmax3, fTFmax4, ffmax1, ffmax2, ffmax3, ffMax4
-      real fTFmax1x, fTFmax2x, fTFmax3x, fTFmax4x, ffmax1x, ffmax2x, ffmax3x, ffMax4x
-      real flow1, flow2, flow3, flow4
-      real flow1x, flow2x, flow3x, flow4x
-      real fhigh1, fhigh2, fhigh3, fhigh4
-      real fhigh1x, fhigh2x, fhigh3x, fhigh4x
+      real TF1(MAXPTS), TF2(MAXPTS), TF3(MAXPTS), TF4(MAXPTS), dt, time, df, pga
+      real fTFmax1, fTFmax2, fTFmax3, fTFmax4
       real sTFmax1, sTFmax2, sTFmax3, sTFmax4
-      real sTFmax1x, sTFmax2x, sTFmax3x, sTFmax4x
-      real sfMax1, sfMax2, sfMax3, sfMax4
-      real sfMax1x, sfMax2x, sfMax3x, sfMax4x
+      real sfmax1, sfmax2, sfmax3, sfmax4
+      real ffmax1, ffmax2, ffmax3, ffmax4
+      real flow1, flow2, flow3, flow4
+      real fhigh1, fhigh2, fhigh3, fhigh4
       real slow1, slow2, slow3, slow4
-      real slow1x, slow2x, slow3x, slow4x
       real shigh1, shigh2, shigh3, shigh4
-      real shigh1x, shigh2x, shigh3x, shigh4x
+      real sigmax, pi, omega, alpha
+      real varN1(MAXPTS), varN2(MAXPTS), varN3(MAXPTS), varN4(MAXPTS)
+      real sigmaN1(MAXPTS), sigmaN2(MAXPTS), sigmaN3(MAXPTS), sigmaN4(MAXPTS)
+      real accel(MAXPTS), damping, response(MAXPTS), TF1SDOF(MAXPTS)
       parameter (pi=3.14159)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
@@ -49,15 +42,16 @@ c       read in run file
         open (c,file=lsdamfile,status='old')
         read (a,*) nFiles   
         read (a,*) WinType
-        read (a,*) Win_len         
+        read (a,*) Win_len0  
+        read (a,*) sigmax
+        read (a,*) loopmax       
 
 c       write headers for first and second mode info files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
         write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 '
+        write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
         
 c       loop over number of files (rock time histories)    
-        count1 = 0
-        count2 = 0
         do iFile=1,nFiles
 
 c         read in rock time history
@@ -99,7 +93,7 @@ c         compute FFT
           call calcFFT (dam3, nPts, dt, df, fasDam3, npts1)
           call calcFFT (dam4, nPts, dt, df, fasDam4, npts1)
 
-c         compute unsmooth transfer function
+c         compute raw transfer function
           do i=1,npts1/2
             TF1(i) = fasDam1(i) / fasRock(i)
             TF2(i) = fasDam2(i) / fasRock(i)
@@ -107,91 +101,181 @@ c         compute unsmooth transfer function
             TF4(i) = fasDam4(i) / fasRock(i)
           enddo
 
-c         smooth FFT, first pass
-          call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-          call smooth(WinType, Win_len, fasDam1, npts1, fasDam1Sm, lnfasDam1Sm)
-          call smooth(WinType, Win_len, fasDam2, npts1, fasDam2Sm, lnfasDam2Sm)
-          call smooth(WinType, Win_len, fasDam3, npts1, fasDam3Sm, lnfasDam3Sm)
-          call smooth(WinType, Win_len, fasDam4, npts1, fasDam4Sm, lnfasDam4Sm)
-
-c         smooth FFT, second pass
-          call smooth(WinType, Win_len, fasRockSm, npts1, fasRockSmx, lnfasRockSmx)
-          call smooth(WinType, Win_len, fasDam1Sm, npts1, fasDam1Smx, lnfasDam1Smx)
-          call smooth(WinType, Win_len, fasDam2Sm, npts1, fasDam2Smx, lnfasDam2Smx)
-          call smooth(WinType, Win_len, fasDam3Sm, npts1, fasDam3Smx, lnfasDam3Smx)
-          call smooth(WinType, Win_len, fasDam4Sm, npts1, fasDam4Smx, lnfasDam4Smx)
+c         smooth FFT, dam1
+          Win_len = Win_len0
+          do i=1, loopmax
+            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
+            call smooth(WinType, Win_len, fasDam1, npts1, fasDam1Sm, lnfasDam1Sm)
           
-c         compute smoothed transfer function, from first pass
-          do i=1,npts1/2
-            TF1Sm(i) = fasDam1Sm(i) / fasRockSm(i)
-            TF2Sm(i) = fasDam2Sm(i) / fasRockSm(i)
-            TF3Sm(i) = fasDam3Sm(i) / fasRockSm(i)
-            TF4Sm(i) = fasDam4Sm(i) / fasRockSm(i)
-          enddo
+c           compute smoothed transfer function
+            do j=1,npts1/2
+              TF1Sm(j) = fasDam1Sm(j) / fasRockSm(j)
+            enddo
 
-c         compute smoothed transfer function, from second pass
-          do i=1,npts1/2
-            TF1Smx(i) = fasDam1Smx(i) / fasRockSmx(i)
-            TF2Smx(i) = fasDam2Smx(i) / fasRockSmx(i)
-            TF3Smx(i) = fasDam3Smx(i) / fasRockSmx(i)
-            TF4Smx(i) = fasDam4Smx(i) / fasRockSmx(i)
-          enddo   
+c           compute variance to determine if more smoothing is necessary
+            call variance(Win_len, df, TF1Sm, sigmax, varN1, sigmaN1, xflag1)
+        
+c           increase window length and smooth again
+            if (xflag1 .eq. 1) then 
+              Win_len = Win_len + 2
+              if (i .eq. loopmax) then
+                write (*,*) 'increase loops for smoothing '
+                pause 
+              endif
+            else
+              Win_len1 = Win_len
+              goto 10              
+            endif 
+          enddo  
+   10   continue   
 
-c         find first and second mode, from first pass
+c         smooth FFT, dam2
+          Win_len = Win_len0
+          do i=1, loopmax
+            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
+            call smooth(WinType, Win_len, fasDam2, npts1, fasDam2Sm, lnfasDam2Sm)
+          
+c           compute smoothed transfer function
+            do j=1,npts1/2
+              TF2Sm(j) = fasDam2Sm(j) / fasRockSm(j)
+            enddo
+
+c           compute variance to determine if more smoothing is necessary
+            call variance(Win_len, df, TF2Sm, sigmax, varN2, sigmaN2, xflag2)
+
+c           increase window length and smooth again
+            if (xflag2 .eq. 1) then 
+              Win_len = Win_len + 2 
+              if (i .eq. loopmax) then
+                write (*,*) 'increase loops for smoothing '
+                pause 
+              endif
+            else
+              Win_len2 = Win_len
+              goto 20 
+            endif 
+          enddo  
+   20   continue
+
+c         smooth FFT, dam3
+          Win_len = Win_len0
+          do i=1, loopmax
+            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
+            call smooth(WinType, Win_len, fasDam3, npts1, fasDam3Sm, lnfasDam3Sm)
+          
+c           compute smoothed transfer function
+            do j=1,npts1/2
+              TF3Sm(j) = fasDam3Sm(j) / fasRockSm(j)
+            enddo
+
+c           compute variance to determine if more smoothing is necessary
+            call variance(Win_len, df, TF3Sm, sigmax, varN3, sigmaN3, xflag3)
+
+c           increase window length and smooth again
+            if (xflag3 .eq. 1) then 
+              Win_len = Win_len + 2 
+              if (i .eq. loopmax) then
+                write (*,*) 'increase loops for smoothing '
+                pause 
+              endif
+            else
+              Win_len3 = Win_len
+              goto 30 
+            endif 
+          enddo  
+   30   continue
+
+c         smooth FFT, dam4
+          Win_len = Win_len0
+          do i=1, loopmax
+            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
+            call smooth(WinType, Win_len, fasDam4, npts1, fasDam4Sm, lnfasDam4Sm)
+          
+c           compute smoothed transfer function
+            do j=1,npts1/2
+              TF4Sm(j) = fasDam4Sm(j) / fasRockSm(j)  
+            enddo
+
+c           compute variance to determine if more smoothing is necessary
+            call variance(Win_len, df, TF4Sm, sigmax, varN4, sigmaN4, xflag4)
+
+c           increase window length and smooth again
+            if (xflag4 .eq. 1) then 
+              Win_len = Win_len + 2 
+              if (i .eq. loopmax) then
+                write (*,*) 'increase loops for smoothing '
+                pause 
+              endif
+            else
+              Win_len4 = Win_len
+              goto 40 
+            endif 
+          enddo  
+   40   continue 
+
+c         find first and second mode
           call mode(TF1Sm, df, fTFmax1, ffmax1, flow1, fhigh1, sTFmax1, sfmax1, slow1, shigh1)
           call mode(TF2Sm, df, fTFmax2, ffmax2, flow2, fhigh2, sTFmax2, sfmax2, slow2, shigh2)
           call mode(TF3Sm, df, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3)
           call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
 
-c         find first and second mode, from second pass
-          call mode(TF1Smx, df, fTFmax1x, ffmax1x, flow1x, fhigh1x, sTFmax1x, sfmax1x, slow1x, shigh1x)
-          call mode(TF2Smx, df, fTFmax2x, ffmax2x, flow2x, fhigh2x, sTFmax2x, sfmax2x, slow2x, shigh2x)
-          call mode(TF3Smx, df, fTFmax3x, ffmax3x, flow3x, fhigh3x, sTFmax3x, sfmax3x, slow3x, shigh3x)
-          call mode(TF4Smx, df, fTFmax4x, ffmax4x, flow4x, fhigh4x, sTFmax4x, sfmax4x, slow4x, shigh4x)
-
-c         throw out this record if no second mode found (temporary), first pass
-          if (sfmax1 .eq. 999 .or. sfmax2 .eq. 999 .or. sfmax3 .eq. 999 .or. sfmax4 .eq. 999) then
-            count1 = count1 + 1
-            test = 1
-          endif
-          
-c         throw out this record if no second mode found (temporary), second pass
-          if (sfmax1x .eq. 999 .or. sfmax2x .eq. 999 .or. sfmax3x .eq. 999 .or. sfmax4x .eq. 999) then
-            count2 = count2 + 1
-            test = 1
-          endif
-          
-          if (test .eq. 1) then
-            goto 10
-          endif
- 
-c         print smooth transfer functions to file, freq domain
-          write (39+iFile,*) rockfile
-          write (39+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm'
-          do i=1, npts1/2
-            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i)
+c         fit to SDOF oscillator
+          do i=1,npts
+            accel(i) = 0.
           enddo
-          close(39+iFile) 
+          accel(100) = 1.
+          omega = ffmax1 * 2.*pi
+c         loop over damping from 0.06 to 0.12
+          do k=1,7
+            damping(k) = 0.05 +0.01*k
+c           calculate SDOF response TH
+            call coeff (omega, damping(k), dt)
+            call brs (accel, omega, damping(k), npts, response) 
+c           multiply response by factor alpha
+c           loop over alpha from 1.1 to 1.5
+            do l=1,5
+              alpha(l) = 1. + 0.1*l
+              response = response*alpha(l)
+c             calculate SDOF FFT / TF
+              call calcFFT (response, npts, dt, df, TF1SDOF, npts2)
+              
+              do 
+              rms(k,l) = 
+              
+c             print SDOF transfer functions to file, freq domain
+c              write (59+l,*) rockfile
+c              write (59+l,*) 'damping ', damping
+c              write (59+l,*) 'alpha ', alpha
+c              write (59+l,*) 'freq(Hz) ', 'TF1SDOF '
+c              do i=1, npts2/2
+c                write (59+l,'( f10.4,4f10.4)') df*(i-1), TF1SDOF(i)
+c              enddo
+c              close(59+l) 
+              
+            enddo
+          enddo
+ 
+c         print raw transfer functions to file, freq domain
+c          write (39+iFile,*) rockfile, pga
+c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
+c          do i=1, npts1/2
+c            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
+c          enddo
+c          close(39+iFile)
 
-c         print unsmoothed transfer functions to file, freq domain
-          write (49+iFile,*) rockfile, pga
-          write (49+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
+c         print smooth transfer functions to file, freq domain
+          write (49+iFile,*) rockfile
+          write (49+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm'
           do i=1, npts1/2
-            write (49+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
+            write (49+iFile,'( f10.4,4f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i)
           enddo
           close(49+iFile) 
 
-c        print all pga, TFmax, freqMax, freqlow, freqhigh to one file
+c         print all pga, TFmax, freqMax, freqlow, freqhigh to one file
           write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
           write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
-
-   10   continue   
-        enddo
-        
-        write (*,*) 'count1 ', count1
-        write (*,*) 'count2 ', count2
-        pause
-        
+          write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4
+        enddo        
       end
 
 c ------------------------------------------------------------------

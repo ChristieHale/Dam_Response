@@ -141,25 +141,45 @@ c           normalize weights to sum to 1, partial window
  
 c ----------------------------------------------------------------------
 
-      subroutine addsmooth(WinType, Win_len, fasOrig, npts1, fasSmooth, faslnSmooth)
+      subroutine variance(Win_len, df, TFSm, sigmax, varN, sigmaN, xflag)
 
       implicit none
       include 'max_dims.H'
 
-      integer WinType, Win_len, npts1 
-      real Win(MAXPTS), fasOrig(MAXPTS), fasSmooth(MAXPTS), faslnSmooth(MAXPTS)
+      integer Win_len, m, i, k, Hz30, xflag
+      real diff(MAXPTS), TFSm(MAXPTS), df, mean, sum
+      real var(MAXPTS), sigma(MAXPTS)
+      real varN(MAXPTS), sigmaN(MAXPTS)
+      real sigmax
  
-c       get window for smoothing
-        if (WinType .eq. 1) then
-          call Box(Win_len,Win) 
-        elseif (WinType .eq. 2) then
-          call Hanning(Win_len,Win)
-        elseif (WinType .eq. 3) then  
-          call Hamming(Win_len,Win)
-        endif
-
-c       convolve window with fasRock
-        call convolve(fasOrig, npts1, Win, Win_len, fasSmooth, faslnSmooth)                   
-
+ 
+c       calculate variance over Window length  
+        xflag = 0  
+        m = nint((0.5*(Win_len+1))+1)
+        Hz30 = nint(30./df + 1)
+        do i=m, Hz30    
+c         calculate mean
+          mean = 0.0     
+          do k=i-m, i+m
+            mean = mean + TFSm(k)/Win_len             
+          enddo
+c         calculate the difference from the mean
+          do k=i-m, i+m
+            diff(k) = TFSm(k) - mean             
+          enddo 
+c         calculate the variance
+          sum = 0.0
+          do k=i-m, i+m
+            sum = sum + diff(k)**2.   
+          enddo
+          var(i) = sum/Win_len  
+          varN(i) = var(i)/sqrt(real(Win_len))
+          sigma(i) = sqrt(var(i))
+          sigmaN(i) = sigma(i)/sqrt(real(Win_len))
+          if (sigmaN(i) .gt. sigmax) then
+            xflag = 1
+          endif  
+        enddo       
+ 
       return
       end
