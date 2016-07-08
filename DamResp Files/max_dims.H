@@ -1,2 +1,2 @@
-      integer MAXPTS
-      parameter ( MAXPTS=40000)
+      integer MAXPTS, MAXCOEF
+      parameter ( MAXPTS=40000, MAXCOEF=50)

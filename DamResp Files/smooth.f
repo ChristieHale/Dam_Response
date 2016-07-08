@@ -141,7 +141,7 @@ c           normalize weights to sum to 1, partial window
  
 c ----------------------------------------------------------------------
 
-      subroutine variance(Win_len, df, TFSm, sigmax, varN, sigmaN, xflag)
+      subroutine variance(Win_len, df, TFSm, sigmax, sigmaN, xflag)
 
       implicit none
       include 'max_dims.H'
@@ -149,23 +149,23 @@ c ----------------------------------------------------------------------
       integer Win_len, m, i, k, Hz30, xflag
       real diff(MAXPTS), TFSm(MAXPTS), df, mean, sum
       real var(MAXPTS), sigma(MAXPTS)
-      real varN(MAXPTS), sigmaN(MAXPTS)
+      real sigmaN(MAXPTS)
       real sigmax
  
  
 c       calculate variance over Window length  
         xflag = 0  
-        m = nint((0.5*(Win_len+1))+1)
+        m = nint(0.5*(Win_len-1))
         Hz30 = nint(30./df + 1)
-        do i=m, Hz30    
+        do i=m+1, Hz30    
 c         calculate mean
           mean = 0.0     
-          do k=i-m, i+m
-            mean = mean + TFSm(k)/Win_len             
+          do k=i-m, i+m          
+            mean = mean + alog(TFSm(k))/Win_len             
           enddo
 c         calculate the difference from the mean
           do k=i-m, i+m
-            diff(k) = TFSm(k) - mean             
+            diff(k) = alog(TFSm(k)) - mean             
           enddo 
 c         calculate the variance
           sum = 0.0
@@ -173,7 +173,6 @@ c         calculate the variance
             sum = sum + diff(k)**2.   
           enddo
           var(i) = sum/Win_len  
-          varN(i) = var(i)/sqrt(real(Win_len))
           sigma(i) = sqrt(var(i))
           sigmaN(i) = sigma(i)/sqrt(real(Win_len))
           if (sigmaN(i) .gt. sigmax) then

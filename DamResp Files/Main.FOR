@@ -7,7 +7,7 @@
       parameter (a=10, b=11, c=12, d=13, e=14, f=37, g=38, h=39)
       integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
       integer Win_len4, xflag1, xflag2, xflag3, xflag4   
-      integer nFiles, iFile, i, j, k, l, npts, npts1, npts2, loopmax
+      integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS)
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
@@ -25,11 +25,17 @@
       real fhigh1, fhigh2, fhigh3, fhigh4
       real slow1, slow2, slow3, slow4
       real shigh1, shigh2, shigh3, shigh4
-      real sigmax, pi, omega, alpha
-      real varN1(MAXPTS), varN2(MAXPTS), varN3(MAXPTS), varN4(MAXPTS)
+      real sigmax
       real sigmaN1(MAXPTS), sigmaN2(MAXPTS), sigmaN3(MAXPTS), sigmaN4(MAXPTS)
-      real accel(MAXPTS), damping, response(MAXPTS), TF1SDOF(MAXPTS)
-      parameter (pi=3.14159)
+      real damping1, damping2, damping3, damping4
+      real alpha1, alpha2, alpha3, alpha4
+      real response1(MAXPTS), response2(MAXPTS), response3(MAXPTS), response4(MAXPTS)
+      real response12(MAXPTS), response22(MAXPTS), response32(MAXPTS), response42(MAXPTS)
+      real damping12, damping22, damping32, damping42
+      real alpha12, alpha22, alpha32, alpha42
+      real TFSDOF1(MAXPTS), TFSDOF2(MAXPTS), TFSDOF3(MAXPTS), TFSDOF4(MAXPTS) 
+      real TFSDOF12(MAXPTS), TFSDOF22(MAXPTS), TFSDOF32(MAXPTS), TFSDOF42(MAXPTS)
+      real TF2mode1(MAXPTS), TF2mode2(MAXPTS), TF2mode3(MAXPTS), TF2mode4(MAXPTS) 
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
 c       read in run file 
@@ -46,7 +52,7 @@ c       read in run file
         read (a,*) sigmax
         read (a,*) loopmax       
 
-c       write headers for first and second mode info files
+c       write headers for output files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
         write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 '
         write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
@@ -113,7 +119,7 @@ c           compute smoothed transfer function
             enddo
 
 c           compute variance to determine if more smoothing is necessary
-            call variance(Win_len, df, TF1Sm, sigmax, varN1, sigmaN1, xflag1)
+            call variance(Win_len, df, TF1Sm, sigmax, sigmaN1, xflag1)
         
 c           increase window length and smooth again
             if (xflag1 .eq. 1) then 
@@ -141,7 +147,7 @@ c           compute smoothed transfer function
             enddo
 
 c           compute variance to determine if more smoothing is necessary
-            call variance(Win_len, df, TF2Sm, sigmax, varN2, sigmaN2, xflag2)
+            call variance(Win_len, df, TF2Sm, sigmax, sigmaN2, xflag2)
 
 c           increase window length and smooth again
             if (xflag2 .eq. 1) then 
@@ -169,7 +175,7 @@ c           compute smoothed transfer function
             enddo
 
 c           compute variance to determine if more smoothing is necessary
-            call variance(Win_len, df, TF3Sm, sigmax, varN3, sigmaN3, xflag3)
+            call variance(Win_len, df, TF3Sm, sigmax, sigmaN3, xflag3)
 
 c           increase window length and smooth again
             if (xflag3 .eq. 1) then 
@@ -197,7 +203,7 @@ c           compute smoothed transfer function
             enddo
 
 c           compute variance to determine if more smoothing is necessary
-            call variance(Win_len, df, TF4Sm, sigmax, varN4, sigmaN4, xflag4)
+            call variance(Win_len, df, TF4Sm, sigmax, sigmaN4, xflag4)
 
 c           increase window length and smooth again
             if (xflag4 .eq. 1) then 
@@ -219,59 +225,89 @@ c         find first and second mode
           call mode(TF3Sm, df, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3)
           call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
 
-c         fit to SDOF oscillator
-          do i=1,npts
-            accel(i) = 0.
-          enddo
-          accel(100) = 1.
-          omega = ffmax1 * 2.*pi
-c         loop over damping from 0.06 to 0.12
-          do k=1,7
-            damping(k) = 0.05 +0.01*k
-c           calculate SDOF response TH
-            call coeff (omega, damping(k), dt)
-            call brs (accel, omega, damping(k), npts, response) 
-c           multiply response by factor alpha
-c           loop over alpha from 1.1 to 1.5
-            do l=1,5
-              alpha(l) = 1. + 0.1*l
-              response = response*alpha(l)
-c             calculate SDOF FFT / TF
-              call calcFFT (response, npts, dt, df, TF1SDOF, npts2)
-              
-              do 
-              rms(k,l) = 
-              
-c             print SDOF transfer functions to file, freq domain
-c              write (59+l,*) rockfile
-c              write (59+l,*) 'damping ', damping
-c              write (59+l,*) 'alpha ', alpha
-c              write (59+l,*) 'freq(Hz) ', 'TF1SDOF '
-c              do i=1, npts2/2
-c                write (59+l,'( f10.4,4f10.4)') df*(i-1), TF1SDOF(i)
-c              enddo
-c              close(59+l) 
-              
-            enddo
-          enddo
- 
-c         print raw transfer functions to file, freq domain
-c          write (39+iFile,*) rockfile, pga
-c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
-c          do i=1, npts1/2
-c            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
-c          enddo
-c          close(39+iFile)
+c         fit first mode to SDOF oscillator
+          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1)
+          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2)
+          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3)
+          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4)   
 
-c         print smooth transfer functions to file, freq domain
+c         fit second mode to SDOF oscillator
+          call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12)
+          call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22)
+          call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32)
+          call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42)
+
+c         first and second mode together
+          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, TF2mode1)
+          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, TF2mode2)
+          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, TF2mode3)
+          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, TF2mode4)
+
+c         print raw fas to file
+          write (19+iFile,*) rockfile, pga
+          write (19+iFile,*) 'freq(Hz) ', 'fasRock '
+          do i=1, npts1/2
+            write (19+iFile,'( f10.4,4f10.4)') df*(i-1), fasRock(i)
+          enddo
+          close(19+iFile)
+
+c         print raw fas to file
+          write (29+iFile,*) rockfile, pga
+          write (29+iFile,*) 'freq(Hz) ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
+          do i=1, npts1/2
+            write (29+iFile,'( f10.4,4f10.4)') df*(i-1), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
+          enddo
+          close(29+iFile)
+ 
+c         print raw transfer functions to file
+          write (39+iFile,*) rockfile, pga
+          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4'
+          do i=1, npts1/2
+            write (39+iFile,'( f10.4,4f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i)
+          enddo
+          close(39+iFile)
+
+c         print smooth transfer functions to file
           write (49+iFile,*) rockfile
           write (49+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm'
           do i=1, npts1/2
             write (49+iFile,'( f10.4,4f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i)
           enddo
           close(49+iFile) 
+          
+c         print SDOF transfer functions to file, first mode
+          write (59+iFile,*) rockfile
+          write (59+iFile,*) 'damping1 ', 'damping2 ', 'damping3 ', 'damping4 '
+          write (59+iFile,*) damping1, damping2, damping3, damping4
+          write (59+iFile,*) 'alpha1 ', 'alpha2 ', 'alpha3 ', 'alpha4 '
+          write (59+iFile,*) alpha1, alpha2, alpha3, alpha4
+          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'TFSDOF2 ', 'TFSDOF3 ', 'TFSDOF4 '
+          do i=1, npts2/2
+            write (59+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF1(i), TFSDOF2(i), TFSDOF3(i), TFSDOF4(i)
+          enddo
+          close(59+iFile) 
+          
+c         print SDOF transfer functions to file, second mode
+          write (69+iFile,*) rockfile
+          write (69+iFile,*) 'damping12 ', 'damping22 ', 'damping32 ', 'damping42 '
+          write (69+iFile,*) damping12, damping22, damping32, damping42
+          write (69+iFile,*) 'alpha12 ', 'alpha22 ', 'alpha32 ', 'alpha42 '
+          write (69+iFile,*) alpha12, alpha22, alpha32, alpha42
+          write (69+iFile,*) 'freq(Hz) ', 'TFSDOF12 ', 'TFSDOF22 ', 'TFSDOF32 ', 'TFSDOF42 '
+          do i=1, npts2/2
+            write (69+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF12(i), TFSDOF22(i), TFSDOF32(i), TFSDOF42(i)
+          enddo
+          close(69+iFile) 
+          
+c         print SDOF transfer functions to file, both modes
+          write (79+iFile,*) rockfile
+          write (79+iFile,*) 'freq(Hz) ', 'TF2mode1 ', 'TF2mode2 ', 'TF2mode3 ', 'TF2mode4 '
+          do i=1, npts3/2
+            write (79+iFile,'( f10.4,4f10.4)') df*(i-1), TF2mode1(i), TF2mode2(i), TF2mode3(i), TF2mode4(i)
+          enddo
+          close(79+iFile) 
 
-c         print all pga, TFmax, freqMax, freqlow, freqhigh to one file
+c         print all pga, ffmax, sfmax, Win_len, damping, alpha to one file
           write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
           write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
           write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4
@@ -390,9 +426,9 @@ c -------------------------------------------------------
        include 'max_dims.H'
        
        real TFSm(MAXPTS), df, fTFmax, ffmax, flow, fhigh, sTFmax, sfmax, 
-     1      slow, shigh, dTFmax, dfmax, dTF_half, dflow, dfhigh,
-     2      TFmax1, TFmax2, fmax1, fmax2, ndTFmax, ndfmax
-       integer i, j, k, m, Hz30
+     1      slow, shigh, dTFmax, dfmax, dTF_half, dlow, dhigh, ndlow, ndhigh,
+     2      TFmax1, TFmax2, fmax1, fmax2, ndTFmax, ndfmax, ndTF_half
+       integer i, j, k, m, n, p, q, Hz30
        
 c      limit search to maximum frequency of 30 Hz
        Hz30 = nint(30./df + 1)
@@ -411,7 +447,7 @@ c       find frequency halfway down peak, lower
         dTF_half = dTFmax / 2.
         do i=m,2,-1
           if ( TFSm(i) .lt. dTF_half) then
-            dflow = df*(i-1)
+            dlow = df*(i-1)
             j = i
             goto 10
           endif
@@ -420,7 +456,7 @@ c       find frequency halfway down peak, lower
 c       find frequency halfway down peak, upper  
    10   do i=m,Hz30
           if ( TFSm(i) .lt. dTF_half) then
-            dfhigh = df*(i-1)
+            dhigh = df*(i-1)
             k = i
             goto 20
           endif
@@ -433,9 +469,10 @@ c      find the next highest frequency, first try higher
           if (TFSm(i) .gt. TFmax1 ) then
             TFmax1 = TFSm(i)
             fmax1 = df*(i-1)
+            n = i
           endif
         enddo
-        if (fmax1 .eq. dfhigh) then
+        if (fmax1 .eq. dhigh) then
           fmax1 = -999
           TFmax1 = -999
         endif
@@ -446,9 +483,10 @@ c      next try lower
           if (TFSm(i) .gt. TFmax2 ) then
             TFmax2 = TFSm(i)
             fmax2 = df*(i-1)
+            p = i
           endif
         enddo
-        if (fmax2 .eq. dflow) then
+        if (fmax2 .eq. dlow) then
           fmax2 = -999
           TFmax2 = -999
         endif
@@ -457,25 +495,53 @@ c       larger of two test values is next dominant mode
         if (TFmax1 .gt. TFmax2) then
           ndTFmax = TFmax1
           ndfmax = fmax1
+          q = n
         else if (TFmax2 .gt. TFmax1) then
           ndTFmax =  TFmax2
           ndfmax = fmax2
+          q = p
         else if (TFmax1 .eq. TFmax2) then
           ndTFmax = 999
           ndfmax = 999
         endif
 
+c       find frequency halfway down peak, lower 
+        ndTF_half = ndTFmax / 2.
+        do i=q,2,-1
+          if ( TFSm(i) .lt. ndTF_half) then
+            ndlow = df*(i-1)
+            goto 30
+          endif
+        enddo   
+
+c       find frequency halfway down peak, upper  
+   30   do i=q,Hz30
+          if ( TFSm(i) .lt. ndTF_half) then
+            ndhigh = df*(i-1)
+            goto 40
+          endif
+        enddo   
+   40   continue  
+
 c       lower frequency is first mode, higher frequency is second
         if (dfmax .lt. ndfmax) then
           fTFmax = dTFmax
           ffmax = dfmax
+          flow = dlow
+          fhigh = dhigh
           sTFmax = ndTFmax
           sfmax = ndfmax
+          slow = ndlow
+          shigh = ndhigh
         else if (ndfmax .lt. dfmax) then
           fTFmax = ndTFmax
           ffmax = ndfmax
+          flow = ndlow
+          fhigh = ndhigh
           sTFmax = dTFmax
           sfmax = dfmax
+          slow = dlow
+          shigh = dhigh
         endif
 
       return
