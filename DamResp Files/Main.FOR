@@ -8,7 +8,7 @@
       integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
       integer Win_len4, xflag1, xflag2, xflag3, xflag4   
       integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
-      real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS)
+      real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS), Ky
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
       real fasDam1Sm(MAXPTS), lnfasDam1Sm(MAXPTS)
@@ -31,11 +31,18 @@
       real alpha1, alpha2, alpha3, alpha4
       real response1(MAXPTS), response2(MAXPTS), response3(MAXPTS), response4(MAXPTS)
       real response12(MAXPTS), response22(MAXPTS), response32(MAXPTS), response42(MAXPTS)
+      real responsef1(MAXPTS), responsef2(MAXPTS), responsef3(MAXPTS), responsef4(MAXPTS)
       real damping12, damping22, damping32, damping42
       real alpha12, alpha22, alpha32, alpha42
       real TFSDOF1(MAXPTS), TFSDOF2(MAXPTS), TFSDOF3(MAXPTS), TFSDOF4(MAXPTS) 
       real TFSDOF12(MAXPTS), TFSDOF22(MAXPTS), TFSDOF32(MAXPTS), TFSDOF42(MAXPTS)
       real TF2mode1(MAXPTS), TF2mode2(MAXPTS), TF2mode3(MAXPTS), TF2mode4(MAXPTS) 
+      real respTH1(MAXPTS), respTHf1(MAXPTS) 
+      real vel1(MAXPTS), dis1(MAXPTS), velSDOF1(MAXPTS), disSDOF1(MAXPTS)
+      real velSDOFf1(MAXPTS), disSDOFf1(MAXPTS)
+      complex cuRock(MAXPTS), cuDam1(MAXPTS), cuDam2(MAXPTS), cuDam3(MAXPTS), cuDam4(MAXPTS)
+      complex cuSDOF1(MAXPTS), cuSDOF2(MAXPTS), cuSDOF3(MAXPTS), cuSDOF4(MAXPTS)
+      complex cuSDOF12(MAXPTS), cuSDOF22(MAXPTS), cuSDOF32(MAXPTS), cuSDOF42(MAXPTS)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
 c       read in run file 
@@ -50,7 +57,8 @@ c       read in run file
         read (a,*) WinType
         read (a,*) Win_len0  
         read (a,*) sigmax
-        read (a,*) loopmax       
+        read (a,*) loopmax   
+        read (a,*) Ky    
 
 c       write headers for output files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
@@ -89,15 +97,18 @@ c         read in dam time history
             read (e,*,end=100) time, dam1(i), dam2(i), dam3(i), dam4(i)
           enddo
  100      close (e)
+
+c         Newmark method on Crest time history
+          call Newmark (dam1, nPts, dt, Ky, vel1, dis1) 
         
           npts1 = i-1     
  
 c         compute FFT
-          call calcFFT (rockTH, nPts, dt, df, fasRock, npts1)
-          call calcFFT (dam1, nPts, dt, df, fasDam1, npts1)
-          call calcFFT (dam2, nPts, dt, df, fasDam2, npts1)
-          call calcFFT (dam3, nPts, dt, df, fasDam3, npts1)
-          call calcFFT (dam4, nPts, dt, df, fasDam4, npts1)
+          call calcFFT (rockTH, nPts, dt, df, fasRock, cuRock, npts1)
+          call calcFFT (dam1, nPts, dt, df, fasDam1, cuDam1, npts1)
+          call calcFFT (dam2, nPts, dt, df, fasDam2, cuDam2, npts1)
+          call calcFFT (dam3, nPts, dt, df, fasDam3, cuDam3, npts1)
+          call calcFFT (dam4, nPts, dt, df, fasDam4, cuDam4, npts1)
 
 c         compute raw transfer function
           do i=1,npts1/2
@@ -226,36 +237,56 @@ c         find first and second mode
           call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
 
 c         fit first mode to SDOF oscillator
-          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1)
-          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2)
-          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3)
-          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4)   
+          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
+          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
+          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
+          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
 
 c         fit second mode to SDOF oscillator
-          call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12)
-          call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22)
-          call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32)
-          call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42)
+          call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
+          call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
+          call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
+          call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
 
 c         first and second mode together
-          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, TF2mode1)
-          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, TF2mode2)
-          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, TF2mode3)
-          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, TF2mode4)
+          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, TF2mode1, responsef1)
+          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, TF2mode2, responsef2)
+          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, TF2mode3, responsef3)
+          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, TF2mode4, responsef4)
+          
+c         Newmark method on SDOF oscillator response (first mode)
+c          call respTH (cuSDOF1, cuRock, npts2, dt, respTH1)
+          call respTH2 (RockTH, response1, npts, respTH1)
+          call respTH2 (RockTH, responsef1, npts, respTHf1)
+          call Newmark (respTH1, nPts, dt, Ky, velSDOF1, disSDOF1)
+          call Newmark (respTHf1, nPts, dt, Ky, velSDOFf1, disSDOFf1)
 
-c         print raw fas to file
-          write (19+iFile,*) rockfile, pga
-          write (19+iFile,*) 'freq(Hz) ', 'fasRock '
-          do i=1, npts1/2
-            write (19+iFile,'( f10.4,4f10.4)') df*(i-1), fasRock(i)
+c         print acceleration time history of SDOF response to file
+          write (19,*) 'time(s) ', 'respTH1(cm/s2) ', 'respTHf1 '
+          do i=1, npts
+            write (19,'( f10.4,2f10.4)') dt*i, respTH1(i), respTHf1(i)
           enddo
-          close(19+iFile)
+          close(19)
+
+c         print velocity time histories to file
+          write (20,*) 'time(s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
+          do i=1, npts
+            write (20,'( f10.4,2f10.4)') dt*i, velSDOF1(i), velSDOFf1(i)
+          enddo
+          close(20)
+
+c         print displacement time histories to file
+          write (21,*) 'time(s) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) '
+          do i=1, npts
+            write (21,'( f10.4,2f10.4)') dt*i, disSDOF1(i), disSDOFf1(i)
+          enddo
+          close(21)
 
 c         print raw fas to file
           write (29+iFile,*) rockfile, pga
-          write (29+iFile,*) 'freq(Hz) ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
+          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
           do i=1, npts1/2
-            write (29+iFile,'( f10.4,4f10.4)') df*(i-1), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
+            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
           enddo
           close(29+iFile)
  

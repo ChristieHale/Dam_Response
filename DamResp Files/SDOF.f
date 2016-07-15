@@ -1,4 +1,7 @@
-      subroutine SDOF(npts, dt, df, TFSm, ffmax, flow, fhigh, npts2, damping, alpha, response, TFSDOF)
+c-----------------------------------------------------------------------
+
+      subroutine SDOF(npts, dt, df, TFSm, ffmax, flow, fhigh, npts2, damping, alpha, 
+     1                response, TFSDOF, cu)
       
        implicit none
        include 'max_dims.H'
@@ -9,14 +12,19 @@
        real trial_d(MAXCOEF), trial_a(MAXCOEF), rms_sum(MAXCOEF,MAXCOEF)
        real flow, fhigh, TFSDOF_trial2(MAXCOEF,MAXCOEF,MAXPTS), TFSm(MAXPTS)
        real damping, alpha, ffmax
+       complex cu(MAXPTS), cu_trial(MAXPTS), cu_trial2(MAXCOEF,MAXCOEF,MAXPTS)
        integer i, k, l, m, n, npts, npts2, iflow, ifhigh
        parameter (pi=3.14159)
 
+c         initialize acceleration values to zero
           do i=1,npts
             accel(i) = 0.
           enddo
+          
+c         accleration impulse          
           accel(100) = 1.
           omega = ffmax * 2.*pi
+          
 c         loop over damping from 0.08 to 0.20
           do k=1,13
             trial_d(k) = 0.07 +0.01*k
@@ -31,9 +39,10 @@ c           loop over alpha from 0.7 to 1.65
                 response_save(k,l,i) = response2(i)
               enddo
 c             calculate SDOF FFT / TF
-              call calcFFT (response2, npts, dt, df, TFSDOF_trial, npts2) 
-              do i=1,npts2/2              
+              call calcFFT (response2, npts, dt, df, TFSDOF_trial, cu_trial, npts2) 
+              do i=1,npts2              
                 TFSDOF_trial2(k,l,i) = TFSDOF_trial(i)
+                cu_trial2(k,l,i) = cu_trial(i)
               enddo              
               iflow = nint(flow/df + 1)
               ifhigh = nint(fhigh/df + 1)          
@@ -57,31 +66,37 @@ c         find best fit
               endif
             enddo
           enddo  
+          
 c        save final response
          do i=1,npts
            response(i) = response_save(m,n,i)
          enddo 
+         
 c        initialize final TFSDOF
 c        save final TFSDOF   
-         do i=1,npts2/2
+         do i=1,npts2
            TFSDOF(i) = 0.0
            TFSDOF(i) = TFSDOF_trial2(m,n,i)
+           cu(i) = 0.0
+           cu(i) = cu_trial2(m,n,i)
          enddo       
           
       return
       end
 
-c--------------------------------------------------------------------------
+c-----------------------------------------------------------------------
 
-      subroutine SDOF2(npts, dt, df, TFSm, response1, response2, flow, shigh, npts3, TFSDOF)
+      subroutine SDOF2(npts, dt, df, TFSm, response1, response2, flow, shigh, npts3, TFSDOF, response)
       
        implicit none
        include 'max_dims.H'
        
        integer npts, npts3, i, k, m, iflow, ishigh
-       real dt, df, response1(MAXPTS), response2(MAXPTS), response(MAXPTS)
+       real dt, df, response1(MAXPTS), response2(MAXPTS), responset(MAXPTS)
+       real response_save(MAXCOEF,MAXPTS), response(MAXPTS)
        real resp2_shift(MAXPTS), TFSDOF_trial(MAXPTS), TFSDOF_trial2(MAXCOEF,MAXPTS)
        real TFSDOF(MAXPTS), flow, shigh, rms_sum(MAXCOEF), TFSm(MAXPTS), min_rms
+       complex cu_trial(MAXPTS)
 
 c         loop over shift, response2
           do k=10,35 
@@ -94,9 +109,12 @@ c         loop over shift, response2
             enddo
 c           calculate SDOF FFT / TF            
             do i=1,npts
-              response(i) = response1(i) + resp2_shift(i)
+              responset(i) = response1(i) + resp2_shift(i)
+            enddo            
+            do i=1,npts 
+              response_save(k,i) = responset(i)
             enddo
-            call calcFFT (response, npts, dt, df, TFSDOF_trial, npts3) 
+            call calcFFT (responset, npts, dt, df, TFSDOF_trial, cu_trial, npts3) 
             do i=1,npts3/2              
               TFSDOF_trial2(k,i) = TFSDOF_trial(i)
             enddo
@@ -122,6 +140,12 @@ c        save final TFSDOF
          do i=1,npts3/2
            TFSDOF(i) = 0.0
            TFSDOF(i) = TFSDOF_trial2(m,i)
+         enddo 
+
+c        save final response
+         do i=1,npts
+           response(i) = 0.0
+           response(i) = response_save(m,i)
          enddo       
   
       return

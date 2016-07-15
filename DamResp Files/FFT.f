@@ -1,6 +1,6 @@
 c ----------------------------------------------------------------------
 
-      subroutine calcFFT ( acc, nPts, dt, df, fas, npts1  )
+      subroutine calcFFT ( acc, nPts, dt, df, fas, cu, npts1  )
 
       implicit none
       include 'rspMatch.h'
@@ -40,7 +40,6 @@ c     Compute FAS
 
       return
       end
-
 
 c ----------------------------------------------------------------------
       subroutine rdc (x,npts,iflag)

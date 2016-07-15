@@ -1,3 +1,4 @@
+c-----------------------------------------------------------------------
 
       subroutine smooth(WinType, Win_len, fasOrig, npts1, fasSmooth, faslnSmooth)
 
