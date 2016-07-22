@@ -1,6 +1,6 @@
 c ----------------------------------------------------------------------
 
-      subroutine calcFFT ( acc, nPts, dt, df, fas, cu, npts1  )
+      subroutine calcFFT ( acc, nPts, dt, df, mpad, fas, cu, npts1  )
 
       implicit none
       include 'rspMatch.h'

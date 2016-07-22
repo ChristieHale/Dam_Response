@@ -13,7 +13,7 @@ c-----------------------------------------------------------------------
        real flow, fhigh, TFSDOF_trial2(MAXCOEF,MAXCOEF,MAXPTS), TFSm(MAXPTS)
        real damping, alpha, ffmax
        complex cu(MAXPTS), cu_trial(MAXPTS), cu_trial2(MAXCOEF,MAXCOEF,MAXPTS)
-       integer i, k, l, m, n, npts, npts2, iflow, ifhigh
+       integer i, k, l, m, n, npts, npts2, iflow, ifhigh, mtrial
        parameter (pi=3.14159)
 
 c         initialize acceleration values to zero
@@ -39,7 +39,7 @@ c           loop over alpha from 0.7 to 1.65
                 response_save(k,l,i) = response2(i)
               enddo
 c             calculate SDOF FFT / TF
-              call calcFFT (response2, npts, dt, df, TFSDOF_trial, cu_trial, npts2) 
+              call calcFFT (response2, npts, dt, df, mtrial, TFSDOF_trial, cu_trial, npts2) 
               do i=1,npts2              
                 TFSDOF_trial2(k,l,i) = TFSDOF_trial(i)
                 cu_trial2(k,l,i) = cu_trial(i)
@@ -69,11 +69,11 @@ c         find best fit
           
 c        save final response
          do i=1,npts
+           response(i) = 0.0
            response(i) = response_save(m,n,i)
          enddo 
          
-c        initialize final TFSDOF
-c        save final TFSDOF   
+c        save final TFSDOF and cu 
          do i=1,npts2
            TFSDOF(i) = 0.0
            TFSDOF(i) = TFSDOF_trial2(m,n,i)
@@ -86,17 +86,18 @@ c        save final TFSDOF
 
 c-----------------------------------------------------------------------
 
-      subroutine SDOF2(npts, dt, df, TFSm, response1, response2, flow, shigh, npts3, TFSDOF, response)
+      subroutine SDOF2(npts, dt, df, TFSm, response1, response2, flow, shigh, npts3, 
+     1                 response, TFSDOF, cu)
       
        implicit none
        include 'max_dims.H'
        
-       integer npts, npts3, i, k, m, iflow, ishigh
+       integer npts, npts3, i, k, m, iflow, ishigh, mtrial
        real dt, df, response1(MAXPTS), response2(MAXPTS), responset(MAXPTS)
        real response_save(MAXCOEF,MAXPTS), response(MAXPTS)
        real resp2_shift(MAXPTS), TFSDOF_trial(MAXPTS), TFSDOF_trial2(MAXCOEF,MAXPTS)
        real TFSDOF(MAXPTS), flow, shigh, rms_sum(MAXCOEF), TFSm(MAXPTS), min_rms
-       complex cu_trial(MAXPTS)
+       complex cu_trial(MAXPTS), cu_trial2(MAXCOEF,MAXPTS), cu(MAXPTS)
 
 c         loop over shift, response2
           do k=10,35 
@@ -114,9 +115,10 @@ c           calculate SDOF FFT / TF
             do i=1,npts 
               response_save(k,i) = responset(i)
             enddo
-            call calcFFT (responset, npts, dt, df, TFSDOF_trial, cu_trial, npts3) 
-            do i=1,npts3/2              
+            call calcFFT (responset, npts, dt, df, mtrial, TFSDOF_trial, cu_trial, npts3) 
+            do i=1,npts3              
               TFSDOF_trial2(k,i) = TFSDOF_trial(i)
+              cu_trial2(k,i) = cu_trial(i)
             enddo
             iflow = nint(flow/df + 1)
             ishigh = nint(shigh/df + 1)                 
@@ -134,19 +136,20 @@ c         find best fit
               m = k
             endif
           enddo
-           
-c        initialize final TFSDOF
-c        save final TFSDOF   
-         do i=1,npts3/2
-           TFSDOF(i) = 0.0
-           TFSDOF(i) = TFSDOF_trial2(m,i)
-         enddo 
 
 c        save final response
          do i=1,npts
            response(i) = 0.0
            response(i) = response_save(m,i)
-         enddo       
-  
+         enddo 
+           
+c        save final TFSDOF and cu 
+         do i=1,npts3
+           TFSDOF(i) = 0.0
+           TFSDOF(i) = TFSDOF_trial2(m,i)
+           cu(i) = 0.0
+           cu(i) = cu_trial2(m,i)
+         enddo 
+      
       return
       end

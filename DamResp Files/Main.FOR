@@ -8,6 +8,7 @@
       integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
       integer Win_len4, xflag1, xflag2, xflag3, xflag4   
       integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
+      integer mRock, mDam1, mDam2, mDam3, mDam4
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS), Ky
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
@@ -43,6 +44,7 @@
       complex cuRock(MAXPTS), cuDam1(MAXPTS), cuDam2(MAXPTS), cuDam3(MAXPTS), cuDam4(MAXPTS)
       complex cuSDOF1(MAXPTS), cuSDOF2(MAXPTS), cuSDOF3(MAXPTS), cuSDOF4(MAXPTS)
       complex cuSDOF12(MAXPTS), cuSDOF22(MAXPTS), cuSDOF32(MAXPTS), cuSDOF42(MAXPTS)
+      complex cuSDOFf1(MAXPTS), cuSDOFf2(MAXPTS), cuSDOFf3(MAXPTS), cuSDOFf4(MAXPTS)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
 c       read in run file 
@@ -104,11 +106,11 @@ c         Newmark method on Crest time history
           npts1 = i-1     
  
 c         compute FFT
-          call calcFFT (rockTH, nPts, dt, df, fasRock, cuRock, npts1)
-          call calcFFT (dam1, nPts, dt, df, fasDam1, cuDam1, npts1)
-          call calcFFT (dam2, nPts, dt, df, fasDam2, cuDam2, npts1)
-          call calcFFT (dam3, nPts, dt, df, fasDam3, cuDam3, npts1)
-          call calcFFT (dam4, nPts, dt, df, fasDam4, cuDam4, npts1)
+          call calcFFT (rockTH, nPts, dt, df, mRock, fasRock, cuRock, npts1)
+          call calcFFT (dam1, nPts, dt, df, mDam1, fasDam1, cuDam1, npts1)
+          call calcFFT (dam2, nPts, dt, df, mDam2, fasDam2, cuDam2, npts1)
+          call calcFFT (dam3, nPts, dt, df, mDam3, fasDam3, cuDam3, npts1)
+          call calcFFT (dam4, nPts, dt, df, mDam4, fasDam4, cuDam4, npts1)
 
 c         compute raw transfer function
           do i=1,npts1/2
@@ -249,46 +251,47 @@ c         fit second mode to SDOF oscillator
           call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
 
 c         first and second mode together
-          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, TF2mode1, responsef1)
-          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, TF2mode2, responsef2)
-          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, TF2mode3, responsef3)
-          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, TF2mode4, responsef4)
+          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
+          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)
+          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
+          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
           
 c         Newmark method on SDOF oscillator response (first mode)
-c          call respTH (cuSDOF1, cuRock, npts2, dt, respTH1)
-          call respTH2 (RockTH, response1, npts, respTH1)
-          call respTH2 (RockTH, responsef1, npts, respTHf1)
+          call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
+          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
+c          call respTH2 (RockTH, response1, npts, respTH1)
+c          call respTH2 (RockTH, responsef1, npts, respTHf1)
           call Newmark (respTH1, nPts, dt, Ky, velSDOF1, disSDOF1)
           call Newmark (respTHf1, nPts, dt, Ky, velSDOFf1, disSDOFf1)
 
-c         print acceleration time history of SDOF response to file
-          write (19,*) 'time(s) ', 'respTH1(cm/s2) ', 'respTHf1 '
+c         print acceleration time histories to file
+          write (19,*) 'time(s) ', 'dam1 ', 'respTH1 ', 'respTHf1 '
           do i=1, npts
-            write (19,'( f10.4,2f10.4)') dt*i, respTH1(i), respTHf1(i)
+            write (19,'( f10.4,3f10.4)') dt*i, dam1(i), respTH1(i), respTHf1(i)
           enddo
           close(19)
 
 c         print velocity time histories to file
-          write (20,*) 'time(s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
+          write (20,*) 'time(s) ', 'vel1(cm/s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
           do i=1, npts
-            write (20,'( f10.4,2f10.4)') dt*i, velSDOF1(i), velSDOFf1(i)
+            write (20,'( f10.4,3f10.4)') dt*i, vel1(i), velSDOF1(i), velSDOFf1(i)
           enddo
           close(20)
 
 c         print displacement time histories to file
-          write (21,*) 'time(s) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) '
+          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) '
           do i=1, npts
-            write (21,'( f10.4,2f10.4)') dt*i, disSDOF1(i), disSDOFf1(i)
+            write (21,'( f10.4,3f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i)
           enddo
           close(21)
 
 c         print raw fas to file
-          write (29+iFile,*) rockfile, pga
-          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
-          do i=1, npts1/2
-            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
-          enddo
-          close(29+iFile)
+c          write (29+iFile,*) rockfile, pga
+c          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
+c          do i=1, npts1
+c            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
+c          enddo
+c          close(29+iFile)
  
 c         print raw transfer functions to file
           write (39+iFile,*) rockfile, pga

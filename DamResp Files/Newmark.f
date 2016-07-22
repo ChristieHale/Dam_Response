@@ -61,24 +61,24 @@ c      numerical integration over velocity to calculate displacement
       
 c-----------------------------------------------------------------------
 
-      subroutine respTH (cuSDOF, cuRock, npts, dt, resp)
+      subroutine respTH (cuRock, cuSDOF, npts1, npts, m, resp)
       
        implicit none
        include 'max_dims.H'
        
-       integer npts, i
-       real resp(MAXPTS), dt
+       integer npts1, npts, i, m
+       real resp(MAXPTS)
        complex cuSDOF(MAXPTS), cuRock(MAXPTS), mult(MAXPTS)
 
-       do i=1,npts
+       do i=1,npts1
          mult(i) = cuSDOF(i)*cuRock(i)
        enddo
-                     
+          
 c      calculate inverse FFT
-       call cool ( 1., npts, mult )
-       
+       call cool ( 1., m, mult )
+      
        do i=1,npts
-	 resp(i) = real(mult(i))
+	 resp(i) = real(mult(i))/npts1
        enddo
        
       return
@@ -86,22 +86,37 @@ c      calculate inverse FFT
       
 c-----------------------------------------------------------------------
 
-      subroutine respTH2 (RockTH, respTF, npts, resp)
+      subroutine respTH2 (RockTH, respTH, npts, resp)
       
        implicit none
        include 'max_dims.H'
        
-       integer npts, i, j
-       real sum, RockTH(MAXPTS), respTF(MAXPTS), resp(MAXPTS)
+       integer npts, i, k, c, j
+       real RockTH(MAXPTS), respTH(MAXPTS), Conv(MAXPTS), resp(MAXPTS)
 
-c      convolve rock time history with tf response time history
-       do i=1,npts
-         sum = 0.0
-         do j=1,npts
-           sum = sum + RockTH(i)*respTF(j)
-         enddo
-         resp(i) = sum
-       enddo
-       
+c       convolve rock time history with tf response time history       
+        do i=1,2*npts          
+c         point in the first half 
+          if (i .le. npts) then                        
+            Conv(i) = 0.0
+            do k=1,i
+              c = k+npts-i
+              Conv(i) = Conv(i) + RockTH(k)*respTH(c)              
+            enddo
+c         point in the second half
+          elseif (i .gt. npts) then
+            Conv(i) = 0.0
+            do k=i-npts+1,npts
+              c = npts-i+k
+              Conv(i) = Conv(i) + RockTH(k)*respTH(c)
+            enddo
+          endif
+        enddo
+
+c       keep second half
+        do j=1, npts  
+          resp(j) = Conv(j+npts)
+        enddo
+     
       return
       end
