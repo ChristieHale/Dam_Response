@@ -3,8 +3,8 @@
       implicit none
       include 'max_dims.H'
  
-      integer a, b, c, d, e, f, g, h
-      parameter (a=10, b=11, c=12, d=13, e=14, f=37, g=38, h=39)
+      integer a, b, c, d, e, f, g, h, aa
+      parameter (a=10, b=11, c=12, d=13, e=14, f=15, g=16, h=17, aa=18)
       integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
       integer Win_len4, xflag1, xflag2, xflag3, xflag4   
       integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
@@ -38,13 +38,16 @@
       real TFSDOF1(MAXPTS), TFSDOF2(MAXPTS), TFSDOF3(MAXPTS), TFSDOF4(MAXPTS) 
       real TFSDOF12(MAXPTS), TFSDOF22(MAXPTS), TFSDOF32(MAXPTS), TFSDOF42(MAXPTS)
       real TF2mode1(MAXPTS), TF2mode2(MAXPTS), TF2mode3(MAXPTS), TF2mode4(MAXPTS) 
-      real respTH1(MAXPTS), respTHf1(MAXPTS) 
+      real respTH1(MAXPTS), respTHf1(MAXPTS), respTH1_f1(MAXPTS) 
       real vel1(MAXPTS), dis1(MAXPTS), velSDOF1(MAXPTS), disSDOF1(MAXPTS)
-      real velSDOFf1(MAXPTS), disSDOFf1(MAXPTS)
+      real velSDOFf1(MAXPTS), disSDOFf1(MAXPTS), velSDOF1_f1(MAXPTS), disSDOF1_f1(MAXPTS) 
+      real SDOF1_f1(MAXPTS), SDOF1_f2(MAXPTS), SDOF1_f3(MAXPTS)
+      real max_fasrock, frinput, prinput
       complex cuRock(MAXPTS), cuDam1(MAXPTS), cuDam2(MAXPTS), cuDam3(MAXPTS), cuDam4(MAXPTS)
       complex cuSDOF1(MAXPTS), cuSDOF2(MAXPTS), cuSDOF3(MAXPTS), cuSDOF4(MAXPTS)
       complex cuSDOF12(MAXPTS), cuSDOF22(MAXPTS), cuSDOF32(MAXPTS), cuSDOF42(MAXPTS)
       complex cuSDOFf1(MAXPTS), cuSDOFf2(MAXPTS), cuSDOFf3(MAXPTS), cuSDOFf4(MAXPTS)
+      complex cuSDOF1_f1(MAXPTS), cuSDOF1_f2(MAXPTS), cuSDOF1_f3(MAXPTS)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy   
 
 c       read in run file 
@@ -66,21 +69,26 @@ c       write headers for output files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
         write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 '
         write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
+        write (aa,*) 'pga ', 'max_fasrock ', 'prinput '
         
 c       loop over number of files (rock time histories)    
         do iFile=1,nFiles
 
-c         read in rock time history
+c         read in rock time history (NGA-West2)
           read (b,'( a80)') rockfile
           write (*,'( a80)') rockfile
           open (d,file=rockfile,status='old')
-          do j=1,6
+          do j=1,3
             read (d,'( a1)') dummy
           enddo
-          read (d,'( 5x,i6,5x,f7.3)') npts, dt                     
+          read (d,'( 5x,i7,8x,f5.4)') npts, dt                     
           if ( npts .gt. 30000) npts=30000
           read (d,*) (rockTH(i),i=1,npts)
           close (d)
+          
+          write (*,*) 'npts ', npts
+          write (*,*) 'dt ', dt
+          pause
 
 c         find PGA
           pga = 0.
@@ -111,6 +119,16 @@ c         compute FFT
           call calcFFT (dam2, nPts, dt, df, mDam2, fasDam2, cuDam2, npts1)
           call calcFFT (dam3, nPts, dt, df, mDam3, fasDam3, cuDam3, npts1)
           call calcFFT (dam4, nPts, dt, df, mDam4, fasDam4, cuDam4, npts1)
+
+c         find period corresponding to max Sa from rock TH
+          max_fasrock = 0.
+          do i=1,npts1
+            if ( abs( fasRock(i)) .gt. max_fasrock ) then
+              max_fasrock = abs(fasRock(i))
+              frinput = df*(i-1)
+              prinput = 1./frinput              
+            endif              
+          enddo
 
 c         compute raw transfer function
           do i=1,npts1/2
@@ -255,13 +273,26 @@ c         first and second mode together
           call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)
           call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
           call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
+
+c         Play with filter, fc = 1.5, nPole = 2
+          cuSDOF1_f1 = cuSDOF1 
+          call hipass(1.5, 2, df, npts2, cuSDOF1_f1)          
+c         Compute FAS of filtered
+          do i=1,npts2
+	    SDOF1_f1(i) = cabs(cuSDOF1_f1(i))
+          enddo
+c         Newmark method on SDOF oscillator response (first mode), Crest only, w/ hipass filter
+          call respTH (cuRock, cuSDOF1_f1, npts1, npts, mRock, respTH1_f1) 
+          call Newmark (respTH1_f1, nPts, dt, Ky, velSDOF1_f1, disSDOF1_f1)        
           
-c         Newmark method on SDOF oscillator response (first mode)
+c         Newmark method on SDOF oscillator response (first mode), Crest only
           call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
-          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
 c          call respTH2 (RockTH, response1, npts, respTH1)
-c          call respTH2 (RockTH, responsef1, npts, respTHf1)
           call Newmark (respTH1, nPts, dt, Ky, velSDOF1, disSDOF1)
+          
+c         Newmark method on SDOF oscillator response (first and second mode together), Crest only
+          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
+c          call respTH2 (RockTH, responsef1, npts, respTHf1)
           call Newmark (respTHf1, nPts, dt, Ky, velSDOFf1, disSDOFf1)
 
 c         print acceleration time histories to file
@@ -279,19 +310,19 @@ c         print velocity time histories to file
           close(20)
 
 c         print displacement time histories to file
-          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) '
+          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) ', 'disSDOF1_f1(cm) '
           do i=1, npts
-            write (21,'( f10.4,3f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i)
+            write (21,'( f10.4,4f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i), disSDOF1_f1(i)
           enddo
           close(21)
 
 c         print raw fas to file
-c          write (29+iFile,*) rockfile, pga
-c          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
-c          do i=1, npts1
-c            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
-c          enddo
-c          close(29+iFile)
+          write (29+iFile,*) rockfile, pga
+          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
+          do i=1, npts1
+            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
+          enddo
+          close(29+iFile)
  
 c         print raw transfer functions to file
           write (39+iFile,*) rockfile, pga
@@ -341,43 +372,19 @@ c         print SDOF transfer functions to file, both modes
           enddo
           close(79+iFile) 
 
+c         print filtered SDOF transfer functions to file, first mode
+          write (89+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'SDOF1_f1 '
+          do i=1, npts2/2
+            write (89+iFile,'( f10.4,2f10.4)') df*(i-1), TFSDOF1(i), SDOF1_f1(i)
+          enddo
+          close(89+iFile) 
+
 c         print all pga, ffmax, sfmax, Win_len, damping, alpha to one file
           write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
           write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
           write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4
+          write (aa,*) pga, max_fasrock, prinput
         enddo        
-      end
-
-c ------------------------------------------------------------------
-
-      subroutine ft ( u, npts, nmin, dt, df, tb, te, cu1, mpad)
-      real u(1), dt, df
-      integer tb,te, npts,nmin,mpad
-      complex cu1(1)
-
-c     REMOVE THE DC
-      call rdc ( u, npts, 0 )
-
-c     TAPER
-      call cosTaper ( u, npts, tb, te )
-
-c     PAD TO POWER OF 2
-      call pad ( u, npts, nmin, mpad )
-
-c     FILL COMPLEX ARRAY
-      do 10 i=1,npts
-        cu1(i) = cmplx(u(i),0.0)
-  10  continue
-
-c     CALCULATE FORWARD FFT
-      call cool ( -1., mpad, cu1 )
-
-      do i=1,npts
-	    cu1(i) = cu1(i) * dt
-	  enddo
-
-      df = 1./(float(npts)*dt)
-      return
       end
 
 c -------------------------------------------------------

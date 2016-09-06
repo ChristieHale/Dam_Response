@@ -248,19 +248,21 @@ c ----------------------------------------------------------------------
 c     This subroutine applies a butterworth high-pass filter
 c     in the frequency domain
 
-      real fc, freq, fBar, scale, df
       integer nPole, npts
-	  complex cx(1)
+      real fc, freq, fBar, scale, df
+      complex cx(1)
 
-	    cx(1) = cmplx( 0.,0. )
-		freq = df
+        cx(1) = cmplx( 0.,0. )
+        freq = df
         do i=2,npts/2+1
           fbar = ( freq / fc )**( 2 * nPole )
           scale = sqrt( fBar / (1. + fBar) )
           cx(i) = cx(i) * scale
           cx(npts-i+2) = cx(npts-i+2) * scale
           freq = freq + df
+          
         enddo
+        
       return
       end
 
@@ -271,18 +273,19 @@ c ----------------------------------------------------------------------
 c     This subroutine applies a butterworth low-pass filter
 c     in the frequency domain
 
-      complex cx(1)
-      real fc, freq, fBar, amp, df
       integer nPole, npts
+      real fc, freq, fBar, amp, df
+      complex cx(1)
 
-      freq = df
-      do i=2,npts/2 + 1
+        freq = df
+        do i=2,npts/2 + 1
           fBar = ( freq / fc )**( 2 * npole )
           amp = sqrt( 1. / (1.+fBar) )
           cx(i) = cx(i) * amp
           cx(npts-i+2) = cx(npts-i+2) * amp
           freq = freq + df
-      enddo
+        enddo
+      
       return
       end
 
