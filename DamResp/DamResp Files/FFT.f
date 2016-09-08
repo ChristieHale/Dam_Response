@@ -3,7 +3,7 @@ c ----------------------------------------------------------------------
       subroutine calcFFT ( acc, nPts, dt, df, mpad, fas, cu, npts1  )
 
       implicit none
-      include 'rspMatch.h'
+      include 'max_dims.h'
 
       real acc(1), dt, df, fas(1)
       integer tb, te, npts, nmin, mpad, i, j, npts1
@@ -185,8 +185,9 @@ c     n = log base 2 (npts)
 c ----------------------------------------------------------------------
 
       subroutine BandPass ( acc, nPts, dt, maxFreq, minFreq, nPole  )
+      
       implicit none
-      include 'rspMatch.h'
+      include 'max_dims.h'
 
       real acc(1), dt, df, minFreq, maxFreq, fc1, fc2
       integer tb, te, npts, nmin, mpad, i, j, npts1,

@@ -2,19 +2,11 @@
       parameter (a=7, b=8, c=9, d=10, e=11, f=12, g=13, h=14, aa=15, bb=16, cc=17)
       integer WinType, Win_len, Win_len0, Win_len1, Win_len2, Win_len3
       integer Win_len4, Win_len5, Win_len6
-      integer xflag1, xflag2, xflag3, xflag4, xflag5, xflag6   
       integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
       integer mRock, mDam1, mDam2, mDam3, mDam4, msurf1, msurf2
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS), Ky1, Ky2
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasSurf1(MAXPTS), fasSurf2(MAXPTS)
-      real fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
-      real fasDam1Sm(MAXPTS), lnfasDam1Sm(MAXPTS)
-      real fasDam2Sm(MAXPTS), lnfasDam2Sm(MAXPTS)
-      real fasDam3Sm(MAXPTS), lnfasDam3Sm(MAXPTS)
-      real fasDam4Sm(MAXPTS), lnfasDam4Sm(MAXPTS) 
-      real fasSurf1Sm(MAXPTS), lnfasSurf1Sm(MAXPTS)    
-      real fasSurf2Sm(MAXPTS), lnfasSurf2Sm(MAXPTS) 
       real TF1Sm(MAXPTS), TF2Sm(MAXPTS), TF3Sm(MAXPTS), TF4Sm(MAXPTS), TF5Sm(MAXPTS), TF6Sm(MAXPTS)
       real TF1(MAXPTS), TF2(MAXPTS), TF3(MAXPTS), TF4(MAXPTS), dt, dum1, dum2, df, pga
       real TF5(MAXPTS), TF6(MAXPTS)
@@ -27,8 +19,6 @@
       real slow1, slow2, slow3, slow4, slow5, slow6
       real shigh1, shigh2, shigh3, shigh4, shigh5, shigh6
       real sigmax
-      real sigmaN1(MAXPTS), sigmaN2(MAXPTS), sigmaN3(MAXPTS), sigmaN4(MAXPTS)
-      real sigmaN5(MAXPTS), sigmaN6(MAXPTS)
       real damping1, damping2, damping3, damping4, damping5, damping6
       real alpha1, alpha2, alpha3, alpha4, alpha5, alpha6
       real response1(MAXPTS), response2(MAXPTS), response3(MAXPTS), response4(MAXPTS)
@@ -49,8 +39,7 @@
       real vel1(MAXPTS), dis1(MAXPTS), velSDOF1(MAXPTS), disSDOF1(MAXPTS)
       real vel2(MAXPTS), dis2(MAXPTS)
       real velSDOFf1(MAXPTS), disSDOFf1(MAXPTS), velSDOF1_f1(MAXPTS), disSDOF1_f1(MAXPTS) 
-      real SDOF1_f1(MAXPTS), SDOF1_f2(MAXPTS), SDOF1_f3(MAXPTS)
-      real max_fasrock, frinput, prinput
+      real SDOF1_f1(MAXPTS)
       real surf1(MAXPTS), surf2(MAXPTS)
       complex cuRock(MAXPTS), cuDam1(MAXPTS), cuDam2(MAXPTS), cuDam3(MAXPTS), cuDam4(MAXPTS)
       complex cuSurf1(MAXPTS), cuSurf2(MAXPTS)
@@ -60,6 +49,6 @@
       complex cuSDOF52(MAXPTS), cuSDOF62(MAXPTS)
       complex cuSDOFf1(MAXPTS), cuSDOFf2(MAXPTS), cuSDOFf3(MAXPTS), cuSDOFf4(MAXPTS)
       complex cuSDOFf5(MAXPTS), cuSDOFf6(MAXPTS)
-      complex cuSDOF1_f1(MAXPTS), cuSDOF1_f2(MAXPTS), cuSDOF1_f3(MAXPTS)
+      complex cuSDOF1_f1(MAXPTS)
       character*80 runfile, lsrockfile, lsdamfile, rockfile, damfile, dummy
       character*80 lssurface, surfacefile 

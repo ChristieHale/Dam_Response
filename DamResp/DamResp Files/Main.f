@@ -26,7 +26,6 @@ c       write headers for output files
         write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 '
         write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 '
         write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
-        write (aa,*) 'pga ', 'max_fasrock ', 'prinput '
         
 c       loop over number of files (rock time histories)    
         do iFile=1,nFiles
@@ -98,256 +97,102 @@ c         compute raw transfer function
             TF6(i) = fasSurf2(i) / fasRock(i)
           enddo
 
-c         smooth FFT, dam1
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasDam1, npts1, fasDam1Sm, lnfasDam1Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF1Sm(j) = fasDam1Sm(j) / fasRockSm(j)
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF1Sm, sigmax, sigmaN1, xflag1)
-        
-c           increase window length and smooth again
-c            if (xflag1 .eq. 1) then 
-c              Win_len = Win_len + 2
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len1 = Win_len
-c              goto 10              
-c            endif 
-c          enddo  
-c   10   continue   
-
-c         smooth FFT, dam2
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasDam2, npts1, fasDam2Sm, lnfasDam2Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF2Sm(j) = fasDam2Sm(j) / fasRockSm(j)
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF2Sm, sigmax, sigmaN2, xflag2)
-
-c           increase window length and smooth again
-c            if (xflag2 .eq. 1) then 
-c              Win_len = Win_len + 2 
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len2 = Win_len
-c              goto 20 
-c            endif 
-c          enddo  
-c   20   continue
-
-c         smooth FFT, dam3
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasDam3, npts1, fasDam3Sm, lnfasDam3Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF3Sm(j) = fasDam3Sm(j) / fasRockSm(j)
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF3Sm, sigmax, sigmaN3, xflag3)
-
-c           increase window length and smooth again
-c            if (xflag3 .eq. 1) then 
-c              Win_len = Win_len + 2 
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len3 = Win_len
-c              goto 30 
-c            endif 
-c          enddo  
-c   30   continue
-
-c         smooth FFT, dam4
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasDam4, npts1, fasDam4Sm, lnfasDam4Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF4Sm(j) = fasDam4Sm(j) / fasRockSm(j)  
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF4Sm, sigmax, sigmaN4, xflag4)
-
-c           increase window length and smooth again
-c            if (xflag4 .eq. 1) then 
-c              Win_len = Win_len + 2 
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len4 = Win_len
-c              goto 40 
-c            endif 
-c          enddo  
-c   40   continue 
-
-c         smooth FFT, surf1
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasSurf1, npts1, fasSurf1Sm, lnfasSurf1Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF5Sm(j) = fasSurf1Sm(j) / fasRockSm(j)  
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF5Sm, sigmax, sigmaN5, xflag5)
-
-c           increase window length and smooth again
-c            if (xflag5 .eq. 1) then 
-c              Win_len = Win_len + 2 
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len5 = Win_len
-c              goto 50 
-c            endif 
-c          enddo  
-c   50   continue 
-
-c         smooth FFT, surf2
-c          Win_len = Win_len0
-c          do i=1, loopmax
-c            call smooth(WinType, Win_len, fasRock, npts1, fasRockSm, lnfasRockSm)
-c            call smooth(WinType, Win_len, fasSurf2, npts1, fasSurf2Sm, lnfasSurf2Sm)
-          
-c           compute smoothed transfer function
-c            do j=1,npts1/2
-c              TF6Sm(j) = fasSurf2Sm(j) / fasRockSm(j)  
-c            enddo
-
-c           compute variance to determine if more smoothing is necessary
-c            call variance(Win_len, df, TF6Sm, sigmax, sigmaN6, xflag6)
-
-c           increase window length and smooth again
-c            if (xflag6 .eq. 1) then 
-c              Win_len = Win_len + 2 
-c              if (i .eq. loopmax) then
-c                write (*,*) 'increase loops for smoothing '
-c                pause 
-c              endif
-c            else
-c              Win_len6 = Win_len
-c              goto 60 
-c            endif 
-c          enddo  
-c   60   continue
+c         smooth FFT with a variable smoothing routine
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasDam1, df, sigmax, TF1Sm, Win_len1)
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasDam2, df, sigmax, TF2Sm, Win_len2)
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasDam3, df, sigmax, TF3Sm, Win_len3)
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasDam4, df, sigmax, TF4Sm, Win_len4)
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasSurf1, df, sigmax, TF5Sm, Win_len5)
+          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
+     1                    fasSurf2, df, sigmax, TF6Sm, Win_len6)
 
 c         find first and second mode
-c          call mode(TF1Sm, df, fTFmax1, ffmax1, flow1, fhigh1, sTFmax1, sfmax1, slow1, shigh1)
-c          call mode(TF2Sm, df, fTFmax2, ffmax2, flow2, fhigh2, sTFmax2, sfmax2, slow2, shigh2)
-c          call mode(TF3Sm, df, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3)
-c          call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
-c          call mode(TF5Sm, df, fTFmax5, ffmax5, flow5, fhigh5, sTFmax5, sfmax5, slow5, shigh5)
-c          call mode(TF6Sm, df, fTFmax6, ffmax6, flow6, fhigh6, sTFmax6, sfmax6, slow6, shigh6)
+          call mode(TF1Sm, df, fTFmax1, ffmax1, flow1, fhigh1, sTFmax1, sfmax1, slow1, shigh1)
+          call mode(TF2Sm, df, fTFmax2, ffmax2, flow2, fhigh2, sTFmax2, sfmax2, slow2, shigh2)
+          call mode(TF3Sm, df, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3)
+          call mode(TF4Sm, df, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4)
+          call mode(TF5Sm, df, fTFmax5, ffmax5, flow5, fhigh5, sTFmax5, sfmax5, slow5, shigh5)
+          call mode(TF6Sm, df, fTFmax6, ffmax6, flow6, fhigh6, sTFmax6, sfmax6, slow6, shigh6)
 
 c         fit first mode to SDOF oscillator
-c          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
-c          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
-c          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
-c          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
-c          call SDOF(npts, dt, df, TF5Sm, ffmax5, flow5, fhigh5, npts2, damping5, alpha5, response5, TFSDOF5, cuSDOF5)
-c          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, fhigh6, npts2, damping6, alpha6, response6, TFSDOF6, cuSDOF6)
+          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
+          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
+          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
+          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
+          call SDOF(npts, dt, df, TF5Sm, ffmax5, flow5, fhigh5, npts2, damping5, alpha5, response5, TFSDOF5, cuSDOF5)
+          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, fhigh6, npts2, damping6, alpha6, response6, TFSDOF6, cuSDOF6)
           
 c         fit second mode to SDOF oscillator
-c          call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
-c          call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
-c          call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
-c          call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
-c          call SDOF(npts, dt, df, TF5Sm, sfmax5, slow5, shigh5, npts2, damping52, alpha52, response52, TFSDOF52, cuSDOF52)
-c          call SDOF(npts, dt, df, TF6Sm, sfmax6, slow6, shigh6, npts2, damping62, alpha62, response62, TFSDOF62, cuSDOF62)
+          call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
+          call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
+          call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
+          call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
+          call SDOF(npts, dt, df, TF5Sm, sfmax5, slow5, shigh5, npts2, damping52, alpha52, response52, TFSDOF52, cuSDOF52)
+          call SDOF(npts, dt, df, TF6Sm, sfmax6, slow6, shigh6, npts2, damping62, alpha62, response62, TFSDOF62, cuSDOF62)
 
 c         first and second mode together
-c          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
-c          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)
-c          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
-c          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
-c          call SDOF2(npts, dt, df, TF5Sm, response5, response52, flow5, shigh5, npts3, responsef5, TF2mode5, cuSDOFf5)
-c          call SDOF2(npts, dt, df, TF6Sm, response6, response62, flow6, shigh6, npts3, responsef6, TF2mode6, cuSDOFf6)  
+          call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
+          call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)
+          call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
+          call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
+          call SDOF2(npts, dt, df, TF5Sm, response5, response52, flow5, shigh5, npts3, responsef5, TF2mode5, cuSDOFf5)
+          call SDOF2(npts, dt, df, TF6Sm, response6, response62, flow6, shigh6, npts3, responsef6, TF2mode6, cuSDOFf6)  
 
 c         Play with filter, fc = 1.5, nPole = 2
-c          cuSDOF1_f1 = cuSDOF1 
-c          call hipass(1.5, 2, df, npts2, cuSDOF1_f1)          
+          cuSDOF1_f1 = cuSDOF1 
+          call hipass(1.5, 2, df, npts2, cuSDOF1_f1)          
 c         Compute FAS of filtered
-c          do i=1,npts2
-c	    SDOF1_f1(i) = cabs(cuSDOF1_f1(i))
-c          enddo
+          do i=1,npts2
+	    SDOF1_f1(i) = cabs(cuSDOF1_f1(i))
+          enddo
           
 c         Newmark method on SDOF oscillator response (first mode), Crest only, w/ hipass filter
-c          call respTH (cuRock, cuSDOF1_f1, npts1, npts, mRock, respTH1_f1) 
-c          call Newmark (respTH1_f1, nPts, dt, Ky1, velSDOF1_f1, disSDOF1_f1)        
+          call respTH (cuRock, cuSDOF1_f1, npts1, npts, mRock, respTH1_f1) 
+          call Newmark (respTH1_f1, nPts, dt, Ky1, velSDOF1_f1, disSDOF1_f1)        
           
 c         Newmark method on SDOF oscillator response (first mode), Crest only
-c          call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
+          call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
 c          call respTH2 (RockTH, response1, npts, respTH1)
-c          call Newmark (respTH1, nPts, dt, Ky1, velSDOF1, disSDOF1)
+          call Newmark (respTH1, nPts, dt, Ky1, velSDOF1, disSDOF1)
           
 c         Newmark method on SDOF oscillator response (first and second mode together), Crest only
-c          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
+          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
 c          call respTH2 (RockTH, responsef1, npts, respTHf1)
-c          call Newmark (respTHf1, nPts, dt, Ky1, velSDOFf1, disSDOFf1)
+          call Newmark (respTHf1, nPts, dt, Ky1, velSDOFf1, disSDOFf1)
 
 c         print acceleration time histories to file
-c          write (19,*) 'time(s) ', 'dam1 ', 'respTH1 ', 'respTHf1 '
-c          do i=1, npts
-c            write (19,'( f10.4,3f10.4)') dt*i, dam1(i), respTH1(i), respTHf1(i)
-c          enddo
-c          close(19)
+          write (19,*) 'time(s) ', 'dam1 ', 'respTH1 ', 'respTHf1 '
+          do i=1, npts
+            write (19,'( f10.4,3f10.4)') dt*i, dam1(i), respTH1(i), respTHf1(i)
+          enddo
+          close(19)
 
 c         print velocity time histories to file
-c          write (20,*) 'time(s) ', 'vel1(cm/s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
-c          do i=1, npts
-c            write (20,'( f10.4,3f10.4)') dt*i, vel1(i), velSDOF1(i), velSDOFf1(i)
-c          enddo
-c          close(20)
+          write (20,*) 'time(s) ', 'vel1(cm/s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
+          do i=1, npts
+            write (20,'( f10.4,3f10.4)') dt*i, vel1(i), velSDOF1(i), velSDOFf1(i)
+          enddo
+          close(20)
 
 c         print displacement time histories to file
-c          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) ', 'disSDOF1_f1(cm) '
-c          do i=1, npts
-c            write (21,'( f10.4,4f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i), disSDOF1_f1(i)
-c          enddo
-c          close(21)
+          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) ', 'disSDOF1_f1(cm) '
+          do i=1, npts
+            write (21,'( f10.4,4f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i), disSDOF1_f1(i)
+          enddo
+          close(21)
 
 c         print raw fas to file
-c          write (29+iFile,*) rockfile, pga
-c          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
-c          do i=1, npts1
-c            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
-c          enddo
-c          close(29+iFile)
+          write (29+iFile,*) rockfile, pga
+          write (29+iFile,*) 'freq(Hz) ', 'fasRock ', 'fasDam1 ', 'fasDam2 ', 'fasDam3 ', 'fasDam4 '
+          do i=1, npts1
+            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
+          enddo
+          close(29+iFile)
  
 c         print raw transfer functions to file
           write (39+iFile,*) rockfile, pga
@@ -358,57 +203,56 @@ c         print raw transfer functions to file
           close(39+iFile)
 
 c         print smooth transfer functions to file
-c          write (49+iFile,*) rockfile
-c          write (49+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm ', 'TF5Sm ', 'TF6Sm ' 
-c          do i=1, npts1/2
-c            write (49+iFile,'( f10.4,6f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i), TF5Sm(i), TF6Sm(i)
-c          enddo
-c          close(49+iFile) 
+          write (49+iFile,*) rockfile
+          write (49+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm ', 'TF5Sm ', 'TF6Sm ' 
+          do i=1, npts1/2
+            write (49+iFile,'( f10.4,6f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i), TF5Sm(i), TF6Sm(i)
+          enddo
+          close(49+iFile) 
           
 c         print SDOF transfer functions to file, first mode
-c          write (59+iFile,*) rockfile
-c          write (59+iFile,*) 'damping1 ', 'damping2 ', 'damping3 ', 'damping4 '
-c          write (59+iFile,*) damping1, damping2, damping3, damping4
-c          write (59+iFile,*) 'alpha1 ', 'alpha2 ', 'alpha3 ', 'alpha4 '
-c          write (59+iFile,*) alpha1, alpha2, alpha3, alpha4
-c          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'TFSDOF2 ', 'TFSDOF3 ', 'TFSDOF4 '
-c          do i=1, npts2/2
-c            write (59+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF1(i), TFSDOF2(i), TFSDOF3(i), TFSDOF4(i)
-c          enddo
-c          close(59+iFile) 
+          write (59+iFile,*) rockfile
+          write (59+iFile,*) 'damping1 ', 'damping2 ', 'damping3 ', 'damping4 '
+          write (59+iFile,*) damping1, damping2, damping3, damping4
+          write (59+iFile,*) 'alpha1 ', 'alpha2 ', 'alpha3 ', 'alpha4 '
+          write (59+iFile,*) alpha1, alpha2, alpha3, alpha4
+          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'TFSDOF2 ', 'TFSDOF3 ', 'TFSDOF4 '
+          do i=1, npts2/2
+            write (59+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF1(i), TFSDOF2(i), TFSDOF3(i), TFSDOF4(i)
+          enddo
+          close(59+iFile) 
           
 c         print SDOF transfer functions to file, second mode
-c          write (69+iFile,*) rockfile
-c          write (69+iFile,*) 'damping12 ', 'damping22 ', 'damping32 ', 'damping42 '
-c          write (69+iFile,*) damping12, damping22, damping32, damping42
-c          write (69+iFile,*) 'alpha12 ', 'alpha22 ', 'alpha32 ', 'alpha42 '
-c          write (69+iFile,*) alpha12, alpha22, alpha32, alpha42
-c          write (69+iFile,*) 'freq(Hz) ', 'TFSDOF12 ', 'TFSDOF22 ', 'TFSDOF32 ', 'TFSDOF42 '
-c          do i=1, npts2/2
-c            write (69+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF12(i), TFSDOF22(i), TFSDOF32(i), TFSDOF42(i)
-c          enddo
-c          close(69+iFile) 
+          write (69+iFile,*) rockfile
+          write (69+iFile,*) 'damping12 ', 'damping22 ', 'damping32 ', 'damping42 '
+          write (69+iFile,*) damping12, damping22, damping32, damping42
+          write (69+iFile,*) 'alpha12 ', 'alpha22 ', 'alpha32 ', 'alpha42 '
+          write (69+iFile,*) alpha12, alpha22, alpha32, alpha42
+          write (69+iFile,*) 'freq(Hz) ', 'TFSDOF12 ', 'TFSDOF22 ', 'TFSDOF32 ', 'TFSDOF42 '
+          do i=1, npts2/2
+            write (69+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF12(i), TFSDOF22(i), TFSDOF32(i), TFSDOF42(i)
+          enddo
+          close(69+iFile) 
           
 c         print SDOF transfer functions to file, both modes
-c          write (79+iFile,*) rockfile
-c          write (79+iFile,*) 'freq(Hz) ', 'TF2mode1 ', 'TF2mode2 ', 'TF2mode3 ', 'TF2mode4 '
-c          do i=1, npts3/2
-c            write (79+iFile,'( f10.4,4f10.4)') df*(i-1), TF2mode1(i), TF2mode2(i), TF2mode3(i), TF2mode4(i)
-c          enddo
-c          close(79+iFile) 
+          write (79+iFile,*) rockfile
+          write (79+iFile,*) 'freq(Hz) ', 'TF2mode1 ', 'TF2mode2 ', 'TF2mode3 ', 'TF2mode4 '
+          do i=1, npts3/2
+            write (79+iFile,'( f10.4,4f10.4)') df*(i-1), TF2mode1(i), TF2mode2(i), TF2mode3(i), TF2mode4(i)
+          enddo
+          close(79+iFile) 
 
 c         print filtered SDOF transfer functions to file, first mode
-c          write (89+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'SDOF1_f1 '
-c          do i=1, npts2/2
-c            write (89+iFile,'( f10.4,2f10.4)') df*(i-1), TFSDOF1(i), SDOF1_f1(i)
-c          enddo
-c          close(89+iFile) 
+          write (89+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'SDOF1_f1 '
+          do i=1, npts2/2
+            write (89+iFile,'( f10.4,2f10.4)') df*(i-1), TFSDOF1(i), SDOF1_f1(i)
+          enddo
+          close(89+iFile) 
 
 c         print all pga, ffmax, sfmax, Win_len, damping, alpha to one file
-c          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
-c          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
-c          write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4
-c          write (aa,*) pga, max_fasrock, prinput
+          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4
+          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4
+          write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4, Win_len5, Win_len6
         enddo        
       end
 
