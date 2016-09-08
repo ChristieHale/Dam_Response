@@ -3,7 +3,7 @@ c ----------------------------------------------------------------------
       subroutine calcFFT ( acc, nPts, dt, df, mpad, fas, cu, npts1  )
 
       implicit none
-      include 'max_dims.H' 
+      include 'max_dims.h' 
 
       real acc(1), dt, df, fas(1)
       integer tb, te, npts, nmin, mpad, i, j, npts1
@@ -50,8 +50,11 @@ c     IFLAG = 0    remove the mean
 c     IFLAG = 1    remove the mean value of the first 10 points
 c     IFLAG = 2    manual set of DC value to be removed
 
-      real x(1),sum,mean
-      integer npts,iflag
+      implicit none
+
+      integer npts, iflag, i
+      real x(1), sum, mean
+
 
       if (iflag .eq. 0) then
         sum = 0.0
@@ -90,8 +93,11 @@ c ----------------------------------------------------------------------
 
 c     This subroutine tapers the x array
     
-      real x(1), arg
-      integer npts,tb,te
+      implicit none
+    
+      integer npts, tb, te, n, i
+      real x(1), arg, pi
+      
       pi = 3.1415926
 
       if (tb .ne. 0.) then
@@ -124,8 +130,10 @@ c ----------------------------------------------------------------------
 
 c     This subroutine pads the x array to a power of 2 for FFT
 
+      implicit none
+
+      integer test, npts, m, nmin, i
       real x(1)
-      integer test,npts,m,nmin
 
       do 10 i=1,20
         test = 2**i
@@ -151,7 +159,12 @@ c     signi = -1.  forward transform
 c           =  1.  inverse transform
 c     n = log base 2 (npts)
 
+      implicit none
+
+      integer n, lx, j, i, m, l, istep
+      real signi, pi
       complex cx(1), carg, temp, cw
+      
       pi = 4. * atan(1.) * signi
       lx = 2**n
       j = 1

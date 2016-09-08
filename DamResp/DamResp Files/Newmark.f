@@ -3,7 +3,7 @@ c-----------------------------------------------------------------------
       subroutine Newmark (dam1, nPts, dt, Ky, vel, dis) 
       
        implicit none
-       include 'max_dims.H'
+       include 'max_dims.h'
 
        integer nPts, i, j, k       
        real dam1(MAXPTS), dt, Ky, vel(MAXPTS), dis(MAXPTS)  
@@ -64,7 +64,7 @@ c-----------------------------------------------------------------------
       subroutine respTH (cuRock, cuSDOF, npts1, npts, m, resp)
       
        implicit none
-       include 'max_dims.H'
+       include 'max_dims.h'
        
        integer npts1, npts, i, m
        real resp(MAXPTS)
@@ -89,7 +89,7 @@ c-----------------------------------------------------------------------
       subroutine respTH2 (RockTH, respTH, npts, resp)
       
        implicit none
-       include 'max_dims.H'
+       include 'max_dims.h'
        
        integer npts, i, k, c, j
        real RockTH(MAXPTS), respTH(MAXPTS), Conv(MAXPTS), resp(MAXPTS)

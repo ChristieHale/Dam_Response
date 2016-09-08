@@ -1,7 +1,7 @@
       program DamResp
       
       implicit none
-      include 'max_dims.H'  
+      include 'max_dims.h'  
       include 'declare.h'
 
 c       read in run file 
@@ -417,6 +417,7 @@ c -------------------------------------------------------
       subroutine coeff (w, beta1, dt1)
       
       implicit none
+      
       real beta1, dt1, w
       real a11, a12, a21, a22, b11, b12, b21, b22
       real beta, dt, t1, t2, t3, t4, s1, s2
@@ -455,6 +456,7 @@ c -------------------------------------------------------
       subroutine brs (x,w,beta,npts,rsp)
       
        implicit none
+       
        real x(1), rsp(1), beta, w
        real d, v, a, z, ap1, dp1, vp1, t1, t2
        real a11, a12, a21, a22, b11, b12, b21, b22
@@ -489,7 +491,7 @@ c -------------------------------------------------------
       subroutine mode(TFSm, df, fTFmax, ffmax, flow, fhigh, sTFmax, sfmax, slow, shigh)
       
        implicit none
-       include 'max_dims.H'
+       include 'max_dims.h'
        
        real TFSm(MAXPTS), df, fTFmax, ffmax, flow, fhigh, sTFmax, sfmax, 
      1      slow, shigh, dTFmax, dfmax, dTF_half, dlow, dhigh, ndlow, ndhigh,
