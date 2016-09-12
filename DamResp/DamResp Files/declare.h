@@ -4,6 +4,7 @@
       integer Win_len4, Win_len5, Win_len6
       integer nFiles, iFile, i, j, npts, npts1, npts2, npts3, loopmax
       integer mRock, mDam1, mDam2, mDam3, mDam4, msurf1, msurf2
+      integer mflag1, mflag2, mflag3, mflag4, mflag5, mflag6
       real rockTH(MAXPTS), dam1(MAXPTS), dam2(MAXPTS), dam3(MAXPTS), dam4(MAXPTS), Ky1, Ky2
       real fasRock(MAXPTS), fasDam1(MAXPTS), fasDam2(MAXPTS), fasDam3(MAXPTS), fasDam4(MAXPTS)
       real fasSurf1(MAXPTS), fasSurf2(MAXPTS)

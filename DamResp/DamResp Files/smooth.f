@@ -23,7 +23,7 @@ c           compute smoothed transfer function
             enddo
 
 c           compute variance to determine if more smoothing is necessary
-            call variance(Win_len, df, TFSm, sigmax, sigmaN, xflag)
+            call variance(Win_len, npts1, df, TFSm, sigmax, sigmaN, xflag)
         
 c           increase window length and smooth again
             if (xflag .eq. 1) then 
@@ -186,23 +186,25 @@ c           normalize weights to sum to 1, partial window
  
 c ----------------------------------------------------------------------
 
-      subroutine variance(Win_len, df, TFSm, sigmax, sigmaN, xflag)
+      subroutine variance(Win_len, npts1, df, TFSm, sigmax, sigmaN, xflag)
 
       implicit none
       include 'max_dims.H'
 
-      integer Win_len, m, i, k, Hz30, xflag
+      integer Win_len, m, i, k, Hz30, xflag, imax_freq, npts1
       real diff(MAXPTS), TFSm(MAXPTS), df, mean, sum
       real var(MAXPTS), sigma(MAXPTS)
       real sigmaN(MAXPTS)
       real sigmax
- 
+
+c      limit search to maximum frequency of 30 Hz, or Nyquist, whichever is lower
+       Hz30 = nint(30./df + 1)
+       imax_freq = min(npts1/2,Hz30)
  
 c       calculate variance over Window length  
         xflag = 0  
         m = nint(0.5*(Win_len-1))
-        Hz30 = nint(30./df + 1)
-        do i=m+1, Hz30    
+        do i=m+1, imax_freq    
 c         calculate mean
           mean = 0.0     
           do k=i-m, i+m          
