@@ -9,8 +9,7 @@ c     (i.e., npts, dt, prinput)
       include 'declare.h'
 
 c       read in run file 
-        write (*,'( 2x,''Enter run file'')')
-        read (*,'( a80)') runfile
+        runfile = "run_fortran.txt"
         open (a,file=runfile,status='old')
         read (a,'( a80)') lsrockfile
         open (b,file=lsrockfile,status='old')
@@ -18,7 +17,8 @@ c       read in run file
         read (a,*) printflag    
 
 c       write headers for output files
-        write (c,*) 'pga ', 'npts ', 'dt ', 'max_fasrock ', 'prinput '
+        open (c,file="prinput.txt",status='unknown')
+        write (c,*) '      pga', '   npts', '          dt', '       m_fas', '     prinput'
         
 c       loop over number of files (rock time histories)    
         do iFile=1,nFiles
@@ -49,10 +49,10 @@ c         compute FFT
 c         find period corresponding to max Sa from rock TH
           Nyquist = 0.5*(1./dt)
           iNyq = nint(Nyquist/df+1)
-          max_fasrock = 0.
+          m_fas = 0.
           do i=1,iNyq
-            if ( abs( fasRock(i)) .gt. max_fasrock ) then
-              max_fasrock = abs(fasRock(i))
+            if ( abs( fasRock(i)) .gt. m_fas ) then
+              m_fas = abs(fasRock(i))
               frinput = df*(i-1)
               prinput = 1./frinput              
             endif              
@@ -69,6 +69,6 @@ c           print raw fas to file
           endif
 
 c         print all required inputs for Quad4MU to one file
-          write (c,*) pga, npts, dt, max_fasrock, prinput
+          write (c,'(f10.5,2x,i5,2x,f10.5,2x,f10.5,2x,f10.5)') pga, npts, dt, m_fas, prinput
         enddo        
       end
