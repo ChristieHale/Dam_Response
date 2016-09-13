@@ -4,10 +4,10 @@
 *.amake.bk
 *.o
 *.app
-*.exe
 mrweprefs.r
 project.r
 absoft_run_env.sh
+Quad_Pre
 
 
 # Ignore Mac OS X system files
