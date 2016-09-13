@@ -1,4 +1,8 @@
-#This code creates the required input file for running QUAD4MU.
+#This code creates the required input files for running QUAD4MU.
+#Three files are needed:
+#1) GeoStudio .xml file (directly from GeoStudio project)
+#2) specifics .xml file (created by user)
+#3) gmlist .txt file (created by user)
 
 require 'nokogiri'
 
@@ -37,19 +41,33 @@ class FormattingScript
       @N_els[i] = el_num
     end
     @N_nodes = []
-    @XCORD = []
-    @YCORD = []
+    @XORDS = []
+    @YORDS = []
     @geo_file.xpath("//N").each_with_index do |node,j|
       n_node = node.attribute('ID').value
       n_node = format_i5_output(n_node)
-      xcord = node.attribute('X').value
-      xcord = format_f10_output(xcord)
-      ycord = node.attribute('Y').value
-      ycord = format_f10_output(ycord)
+      xord = node.attribute('X').value
+      xord = format_f10_output(xord)
+      yord = node.attribute('Y').value
+      yord = format_f10_output(yord)
       @N_nodes[j] = n_node
-      @XCORD[j] = xcord
-      @YCORD[j] = ycord
+      @XORDS[j] = xord
+      @YORDS[j] = yord
     end
+    #find minimum yord value, assume this is base level
+    @base = @YORDS.min
+    #collect node numbers for all nodes at base level for boundary condition 4
+    #excluding first and last node in array, which are boundary condition 2
+    @BC4s = []
+    @YORDS.each_with_index do |yord,i|
+      if yord == @base
+        @BC4s[i+1] = i+1
+      end
+    end
+    @BC4s.compact!
+    @BC2s = [@BC4s[0],@BC4s[-1]]
+    @BC4s = @BC4s.drop(1)
+    @BC4s = @BC4s[0...-1]
   end
 
   def read_specifics
@@ -155,6 +173,11 @@ class FormattingScript
     end
     line37 = @specs_file.xpath("//Line37")
     @Comment37 = line37.attribute('Comment')
+    @ELSEGS = []
+    line38s = @specs_file.xpath("//Line38").each_with_index do |line38,i|
+      elsegs = line38.attribute('ELSEG').value.split(',')
+      @ELSEGS[i] = elsegs.map{ |elseg| format_i5_output(elseg) }
+    end
     line39 = @specs_file.xpath("//Line39")
     @Comment39 = line39.attribute('Comment')
     line40 = @specs_file.xpath("//Line40")
@@ -162,8 +185,12 @@ class FormattingScript
     @TYPE = format_i5_output(type)
     dens = line40.attribute('DENS').value
     @DENS = format_f10_output(dens)
-    po = line40.attribute('PO').value
-    @PO = format_f10_output(po)
+    pow = line40.attribute('POW').value
+    @POW = format_f10_output(pow)
+    pod = line40.attribute('POD').value
+    @POD = format_f10_output(pod)
+    @DRYs = line40.attribute('DRY').value.split(',')
+    @DRYs.map!(&:to_i)
     gmx = line40.attribute('GMX').value
     @GMX = format_f10_output(gmx)
     g = line40.attribute('G').value
@@ -173,8 +200,8 @@ class FormattingScript
     line41 = @specs_file.xpath("//Line41")
     @Comment41 = line41.attribute('Comment')
     line42 = @specs_file.xpath("//Line42")
-    @OUTS = line42.attribute('OUT').value.split(',')
-    @OUTS.map!(&:to_i)
+    @OUTs = line42.attribute('OUT').value.split(',')
+    @OUTs.map!(&:to_i)
   end
 
   def calc_prinput
@@ -198,6 +225,7 @@ class FormattingScript
     File.open('gmlist.txt', 'r').each_line do |gm_name|
       count = count + 1
       gm_name.gsub!("\n",'')
+      #modifying path of ground motion file for pc compatibility
       @EARTHQH = gm_name.gsub("/","\\")
       linenumber = 4
       @gm_file = File.open(gm_name).each_with_index do |line,ind|
@@ -319,6 +347,13 @@ class FormattingScript
       @output_file << "\n"
       @output_file << @Comment37
       @output_file << "\n"
+      @ELSEGS[j].each_with_index do |elseg,i|
+        @output_file << elseg
+        if (i+1) % 15 == 0
+          @output_file << "\n"
+        end
+      end
+      @output_file << "\n"
     end
     @output_file << @Comment39
     @output_file << "\n"
@@ -329,7 +364,11 @@ class FormattingScript
       end
       @output_file << @TYPE
       @output_file << @DENS
-      @output_file << @PO
+      if @DRYs.include?(j+1)
+        @output_file << @POD
+      else
+        @output_file << @POW
+      end
       @output_file << @GMX
       @output_file << @G
       @output_file << @XL
@@ -339,13 +378,17 @@ class FormattingScript
     @output_file << "\n"
     for j in 0..(@NDPT.to_i-1)
       @output_file << @N_nodes[j]
-      @output_file << @XCORD[j]
-      @output_file << @YCORD[j]
-      @output_file << "    4"
-      @OUTS.each do |out|
-        if out == j+1
-          @output_file << "    1"
-        end
+      @output_file << @XORDS[j]
+      @output_file << @YORDS[j]
+      if @BC4s.include?(j+1)
+        @output_file << "    4"
+      elsif @BC2s.include?(j+1)
+        @output_file << "    2"
+      else
+        @output_file << "     "
+      end
+      if @OUTs.include?(j+1)
+        @output_file << "    1"
       end
       @output_file << "\n"
     end
