@@ -4,6 +4,7 @@
 *.amake.bk
 *.o
 *.app
+*.exe
 mrweprefs.r
 project.r
 absoft_run_env.sh
