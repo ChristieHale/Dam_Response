@@ -216,7 +216,7 @@ class FormattingScript
     temp_file << "\n"
     temp_file.close
     # calling fortran script to calculate prinput
-    `./Quad_Pre`
+    `./Quad_Pre1`
     File.delete "run_fortran.txt"
   end
 
