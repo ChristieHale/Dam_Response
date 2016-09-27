@@ -224,7 +224,7 @@ class FormattingScript
     count = 0
     File.open('gmlist.txt', 'r').each_line do |gm_name|
       count = count + 1
-      gm_name.gsub!("\n",'')
+      gm_name.gsub!(/\r\n?|\n/, "");
       #modifying path of ground motion file for pc compatibility
       @EARTHQH = gm_name.gsub("/","\\")
       linenumber = 4
