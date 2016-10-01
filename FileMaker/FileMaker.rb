@@ -17,28 +17,49 @@ class FormattingScript
   end
 
   def open_damfiles
-    @geo_file = Nokogiri::XML(File.open("Dam1_50ft.xml"))
+    @geo_file = Nokogiri::XML(File.open("Dam1_rev1.xml"))
     @specs_file = Nokogiri::XML(File.open("specifics.xml"))
   end
 
   def read_geo
+    @Reg_mats = []
+    @geo_file.xpath("//RegionUsesMaterial").each_with_index do |reg,j|
+      reg_mat = reg.attribute('UsesID').value
+      @Reg_mats[j] = reg_mat
+    end
+    unit_w = []
+    @geo_file.xpath("//Material//UnitWeight").each_with_index do |uw,k|
+      dens = uw.content
+      dens = format_f10_output(dens)
+      unit_w[k+1] = dens
+    end
     el_tot = @geo_file.xpath("//Elements")
     nelm = el_tot.attribute('Len').value
     @NELM = format_i5_output(nelm)
     nodes_tot = @geo_file.xpath("//Nodes")
     ndpt = nodes_tot.attribute('Len').value
     @NDPT = format_i5_output(ndpt)
-    @N_els = []
     @NP = []
+    @N_els = []
+    @DENS = []
+    @El_mats = []
+    @TYPEs = []
     @geo_file.xpath("//EL").each_with_index do |el,i|
       el_num = el.attribute('ID').value
       el_num = format_i5_output(el_num)
+      el_reg_num = el.attribute('Region').value.to_i
+      el_mat = @Reg_mats[el_reg_num-1].to_i
+      el_type = @Reg_mats[el_reg_num-1]
+      el_dens = unit_w[el_mat]
       enodes = el.attribute('Node').value.split(',')
       if enodes.length == 3
         enodes[3] = enodes[2]
       end
       @NP[i] = enodes.map{ |enode| format_i5_output(enode) }
       @N_els[i] = el_num
+      @DENS[i] = el_dens
+      @El_mats[i] = el_mat
+      @TYPEs[i] = format_i5_output(el_type)
     end
     @N_nodes = []
     @XORDS = []
@@ -55,19 +76,15 @@ class FormattingScript
       @YORDS[j] = yord
     end
     #find minimum yord value, assume this is base level
-    @base = @YORDS.min
+    @base = @YORDS.map(&:to_i).min
     #collect node numbers for all nodes at base level for boundary condition 4
-    #excluding first and last node in array, which are boundary condition 2
     @BC4s = []
     @YORDS.each_with_index do |yord,i|
-      if yord == @base
+      if yord.to_i == @base
         @BC4s[i+1] = i+1
       end
     end
     @BC4s.compact!
-    @BC2s = [@BC4s[0],@BC4s[-1]]
-    @BC4s = @BC4s.drop(1)
-    @BC4s = @BC4s[0...-1]
   end
 
   def read_specifics
@@ -180,23 +197,28 @@ class FormattingScript
     end
     line39 = @specs_file.xpath("//Line39")
     @Comment39 = line39.attribute('Comment')
-    line40 = @specs_file.xpath("//Line40")
-    type = line40.attribute('TYPE').value
-    @TYPE = format_i5_output(type)
-    dens = line40.attribute('DENS').value
-    @DENS = format_f10_output(dens)
-    pow = line40.attribute('POW').value
-    @POW = format_f10_output(pow)
-    pod = line40.attribute('POD').value
-    @POD = format_f10_output(pod)
-    @DRYs = line40.attribute('DRY').value.split(',')
-    @DRYs.map!(&:to_i)
-    gmx = line40.attribute('GMX').value
-    @GMX = format_f10_output(gmx)
-    g = line40.attribute('G').value
-    @G = format_f10_output(g)
-    xl = line40.attribute('XL').value
-    @XL = format_f10_output(xl)
+    @POWs = []
+    @PODs = []
+    @DRYs = []
+    @GMXs = []
+    @Gs = []
+    @XLs = []
+    @specs_file.xpath("//Material").each do |mat|
+      mat_num = mat.attribute('ID').value.to_i
+      pow = mat.attribute('POW').value
+      @POWs[mat_num] = format_f10_output(pow)
+      pod = mat.attribute('POD').value
+      @PODs[mat_num] = format_f10_output(pod)
+      drys = mat.attribute('DRY').value.split(',')
+      drys.map!(&:to_i)
+      @DRYs[mat_num] = drys
+      gmx = mat.attribute('GMX').value
+      @GMXs[mat_num] = format_f10_output(gmx)
+      g = mat.attribute('G').value
+      @Gs[mat_num] = format_f10_output(g)
+      xl = mat.attribute('XL').value
+      @XLs[mat_num] = format_f10_output(xl)
+    end
     line41 = @specs_file.xpath("//Line41")
     @Comment41 = line41.attribute('Comment')
     line42 = @specs_file.xpath("//Line42")
@@ -221,6 +243,10 @@ class FormattingScript
   end
 
   def loop_gm
+    folder_in = "in"
+    Dir.mkdir(folder_in)
+    folder_sc = "sc"
+    Dir.mkdir(folder_sc)
     count = 0
     File.open('gmlist.txt', 'r').each_line do |gm_name|
       count = count + 1
@@ -245,19 +271,39 @@ class FormattingScript
         end
       end
       countf = "%.4d" % count
-      fname = "A#{countf}.in"
+      f_in = "A#{countf}.in"
+      f_out = "A#{countf}.out"
       @AFILEOUT = "A#{countf}"
       @KFILEOUT = "A#{countf}"
-      if File.exist?(fname)
-        raise 'Output file already exists'
+      fname_in = File.join(folder_in,f_in)
+      if File.exist?(fname_in)
+        raise '.in file already exists'
       end
-      @output_file = File.new(fname, 'w')
-      write_file
+      @output_file = File.new(fname_in, 'w')
+      write_infile
       close_file
+      f_sc = "Quad4MU-A#{countf}.sc"
+      fname_sc = File.join(folder_sc,f_sc)
+      if File.exist?(fname_sc)
+        raise '.sc file already exists'
+      end
+      sc_file = File.new(fname_sc,'w')
+      #modifying path of input file for pc compatibility
+      fname_in_pc = fname_in.gsub("/","\\")
+      sc_file << "#{fname_in_pc}"
+      sc_file << "\n"
+      sc_file << "Mat.08"
+      sc_file << "\n"
+      sc_file << "out\\"
+      sc_file << "\n"
+      sc_file << "#{f_out}"
+      sc_file << "\n"
+      sc_file << "q"
+      sc_file << "\n"
     end
   end
 
-  def write_file
+  def write_infile
     @output_file << @TITLE
     @output_file << "\n"
     @output_file << @Comment2
@@ -362,17 +408,21 @@ class FormattingScript
       @NP[j].each do |enode|
         @output_file << enode
       end
-      @output_file << @TYPE
-      @output_file << @DENS
-      if @DRYs.include?(j+1)
-        @output_file << @POD
-      else
-        @output_file << @POW
+      @output_file << @TYPEs[j]
+      @output_file << @DENS[j]
+      for k in 1..2
+        if @El_mats[j] == k
+          if @DRYs[k].include?(j+1)
+            @output_file << @PODs[k]
+          else
+            @output_file << @POWs[k]
+          end
+          @output_file << @GMXs[k]
+          @output_file << @Gs[k]
+          @output_file << @XLs[k]
+          @output_file << "\n"
+        end
       end
-      @output_file << @GMX
-      @output_file << @G
-      @output_file << @XL
-      @output_file << "\n"
     end
     @output_file << @Comment41
     @output_file << "\n"
@@ -382,8 +432,6 @@ class FormattingScript
       @output_file << @YORDS[j]
       if @BC4s.include?(j+1)
         @output_file << "    4"
-      elsif @BC2s.include?(j+1)
-        @output_file << "    2"
       else
         @output_file << "     "
       end
@@ -393,6 +441,7 @@ class FormattingScript
       @output_file << "\n"
     end
   end
+
 
 #  def calc_prinput
     # calling fortran script
@@ -412,9 +461,16 @@ class FormattingScript
 
   def format_f10_output(number)
     if number.length > 10
+      number = truncate(number, 10)
+    end
+    if number.length > 10
       raise 'Too many digits'
     end
     number.rjust(10)
+  end
+
+  def truncate(string, max)
+    string.length > max ? "#{string[0...max]}" : string
   end
 
   def close_file
