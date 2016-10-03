@@ -244,9 +244,20 @@ class FormattingScript
 
   def loop_gm
     folder_in = "in"
+    if Dir.exist?(folder_in)
+      raise 'folder already exists'
+    end
     Dir.mkdir(folder_in)
     folder_sc = "sc"
+    if Dir.exist?(folder_sc)
+      raise 'folder already exists'
+    end
     Dir.mkdir(folder_sc)
+    fname_bat = "Dam1_rev1_125gm.bat"
+    if File.exist?(fname_bat)
+      raise '.bat file already exists'
+    end
+    bat_file = File.new(fname_bat, 'w')
     count = 0
     File.open('gmlist.txt', 'r').each_line do |gm_name|
       count = count + 1
@@ -291,16 +302,21 @@ class FormattingScript
       #modifying path of input file for pc compatibility
       fname_in_pc = fname_in.gsub("/","\\")
       sc_file << "#{fname_in_pc}"
-      sc_file << "\n"
-      sc_file << "Mat.08"
-      sc_file << "\n"
+      sc_file << "\r\n"
+      sc_file << "Mat.o8"
+      sc_file << "\r\n"
       sc_file << "out\\"
-      sc_file << "\n"
+      sc_file << "\r\n"
       sc_file << "#{f_out}"
-      sc_file << "\n"
+      sc_file << "\r\n"
       sc_file << "q"
-      sc_file << "\n"
+      sc_file << "\r\n
+      \n"
+      sc_file.close
+      bat_file << "Quad4MU.exe < sc\\#{f_sc}"
+      bat_file << "\r\n"
     end
+    bat_file.close
   end
 
   def write_infile
