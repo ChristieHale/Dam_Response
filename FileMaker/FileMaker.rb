@@ -1,8 +1,9 @@
 #This code creates the required input files for running QUAD4MU.
-#Three files are needed:
+#Three files and one fortran executable are needed:
 #1) GeoStudio .xml file (directly from GeoStudio project)
 #2) specifics .xml file (created by user)
 #3) gmlist .txt file (created by user)
+#4) Quad_Pre1 fortran executable
 
 require 'nokogiri'
 
@@ -13,13 +14,18 @@ class FormattingScript
     read_geo
     read_specifics
     calc_prinput
+    calc_center
     loop_gm
   end
 
+#-------------------------------------------------------------------------------
+
   def open_damfiles
-    @geo_file = Nokogiri::XML(File.open("Dam1_rev1.xml"))
+    @geo_file = Nokogiri::XML(File.open("Dam2_rev1.xml"))
     @specs_file = Nokogiri::XML(File.open("specifics.xml"))
   end
+
+#-------------------------------------------------------------------------------
 
   def read_geo
     @Reg_mats = []
@@ -41,6 +47,7 @@ class FormattingScript
     @NDPT = format_i5_output(ndpt)
     @NP = []
     @N_els = []
+    @El_integs = []
     @DENS = []
     @El_mats = []
     @TYPEs = []
@@ -55,8 +62,10 @@ class FormattingScript
       if enodes.length == 3
         enodes[3] = enodes[2]
       end
+      el_integ = el.attribute('Integ').value.to_i
       @NP[i] = enodes.map{ |enode| format_i5_output(enode) }
       @N_els[i] = el_num
+      @El_integs[i] = el_integ
       @DENS[i] = el_dens
       @El_mats[i] = el_mat
       @TYPEs[i] = format_i5_output(el_type)
@@ -76,16 +85,17 @@ class FormattingScript
       @YORDS[j] = yord
     end
     #find minimum yord value, assume this is base level
-    @base = @YORDS.map(&:to_i).min
+    @base = @YORDS.map(&:to_f).min
     #collect node numbers for all nodes at base level for boundary condition 4
     @BC4s = []
     @YORDS.each_with_index do |yord,i|
       if yord.to_i == @base
-        @BC4s[i+1] = i+1
+        @BC4s << i+1
       end
     end
-    @BC4s.compact!
   end
+
+#-------------------------------------------------------------------------------
 
   def read_specifics
     line1 = @specs_file.xpath("//Line1")
@@ -171,35 +181,30 @@ class FormattingScript
     @KSUFFIX = line30.attribute('KSUFFIX')
     line33 = @specs_file.xpath("//Line33")
     @Comment33 = line33.attribute('Comment')
-    @NSEGS = []
-    @ESEGS = []
-    line34s = @specs_file.xpath("//Line34").each_with_index do |line34,i|
-      nseg = line34.attribute('NSEG').value
-      nseg = format_i5_output(nseg)
-      @NSEGS[i] = nseg
-      eseg = line34.attribute('ESEG').value
-      eseg = format_i5_output(eseg)
-      @ESEGS[i] = eseg
-    end
     line35 = @specs_file.xpath("//Line35")
     @Comment35 = line35.attribute('Comment')
     @NOSEGS = []
+    @NSEGS = []
     line36s = @specs_file.xpath("//Line36").each_with_index do |line36,i|
       nosegs = line36.attribute('NOSEG').value.split(',')
-      @NOSEGS[i] = nosegs.map{ |noseg| format_i5_output(noseg) }
+      nosegs.each_with_index do |noseg,j|
+        @NOSEGS[i] ||= []
+        @NOSEGS[i][j] = format_i5_output(noseg)
+      end
+      nseg = nosegs.length.to_s
+      @NSEGS[i] = format_i5_output(nseg)
     end
     line37 = @specs_file.xpath("//Line37")
     @Comment37 = line37.attribute('Comment')
-    @ELSEGS = []
-    line38s = @specs_file.xpath("//Line38").each_with_index do |line38,i|
-      elsegs = line38.attribute('ELSEG').value.split(',')
-      @ELSEGS[i] = elsegs.map{ |elseg| format_i5_output(elseg) }
-    end
     line39 = @specs_file.xpath("//Line39")
     @Comment39 = line39.attribute('Comment')
+    water = @specs_file.xpath("//Water")
+    waterx = water.attribute('Xwat').value.split(',')
+    @Water_x = waterx.map!(&:to_f)
+    watery = water.attribute('Ywat').value.split(',')
+    @Water_y = watery.map!(&:to_f)
     @POWs = []
     @PODs = []
-    @DRYs = []
     @GMXs = []
     @Gs = []
     @XLs = []
@@ -209,9 +214,6 @@ class FormattingScript
       @POWs[mat_num] = format_f10_output(pow)
       pod = mat.attribute('POD').value
       @PODs[mat_num] = format_f10_output(pod)
-      drys = mat.attribute('DRY').value.split(',')
-      drys.map!(&:to_i)
-      @DRYs[mat_num] = drys
       gmx = mat.attribute('GMX').value
       @GMXs[mat_num] = format_f10_output(gmx)
       g = mat.attribute('G').value
@@ -225,6 +227,8 @@ class FormattingScript
     @OUTs = line42.attribute('OUT').value.split(',')
     @OUTs.map!(&:to_i)
   end
+
+#-------------------------------------------------------------------------------
 
   def calc_prinput
     file=File.open("gmlist.txt","r")
@@ -242,6 +246,96 @@ class FormattingScript
     File.delete "run_fortran.txt"
   end
 
+#-------------------------------------------------------------------------------
+
+  def calc_center
+#   extend the first and last point of the water line up by 100 feet above the dam crest
+    above = @YORDS.map(&:to_f).max + 100
+    firstx = @Water_x[0]
+    lastx = @Water_x[-1]
+    @Water_x.insert(0,firstx)
+    @Water_x.insert(-1,lastx)
+    @Water_y.insert(0,above)
+    @Water_y.insert(-1,above)
+#   repeat the new first point at the end of the array to create a polygon
+    firstx = @Water_x[0]
+    firsty = @Water_y[0]
+    @Water_x.insert(-1,firstx)
+    @Water_y.insert(-1,firsty)
+    nwater = (@Water_x.length)-1
+#   get the x and y coordinates of the line that defines the slip surface
+    @Slip_x = []
+    @Slip_y = []
+    nslip = []
+    @NOSEGS.each_with_index do |ss,i|
+      @NOSEGS[i].each_with_index do |ss_nodes,j|
+        @Slip_x[i] ||= []
+        @Slip_y[i] ||= []
+        @Slip_x[i][j] = @XORDS[ss_nodes.to_i-1].to_f
+        @Slip_y[i][j] = @YORDS[ss_nodes.to_i-1].to_f
+      end
+#     extend the first and last point of the slip surface
+      firstx = @Slip_x[i][0]
+      lasty = @Slip_y[i][-1]
+      lastx_extend = @Slip_x[i][-1] + 100
+      @Slip_x[i].insert(0,firstx)
+      @Slip_x[i].insert(-1,lastx_extend)
+      @Slip_y[i].insert(0,above)
+      @Slip_y[i].insert(-1,lasty)
+#     repeat the new first point at the end of the array to create a polygon
+      firstx = @Slip_x[i][0]
+      firsty = @Slip_y[i][0]
+      @Slip_x[i].insert(-1,firstx)
+      @Slip_y[i].insert(-1,firsty)
+      nslip[i] = (@Slip_x[i].length)-1
+    end
+#   calculate the center of each element
+    cent_x = []
+    cent_y = []
+    for j in 0..(@NELM.to_i-1)
+      cent_x[j] = 0.0
+      cent_y[j] = 0.0
+      count = 0
+      @NP[j].each do |enode|
+        count = count + 1
+        if count <= @El_integs[j]
+          i_enode = enode.to_i-1
+          cent_x[j] = cent_x[j] + @XORDS[i_enode].to_f/@El_integs[j]
+          cent_y[j] = cent_y[j] + @YORDS[i_enode].to_f/@El_integs[j]
+        end
+      end
+    end
+#   determine if element is dry
+    d_flag = []
+    @DRYs = []
+    for j in 0..(@NELM.to_i-1)
+      d_flag[j] = inside_outside(nwater, @Water_x, @Water_y, cent_x[j], cent_y[j])
+      if d_flag[j] == 1
+        @DRYs << @N_els[j].to_i
+      end
+    end
+#   determine if element is inside slip surface
+    @NOSEGS.each_with_index do |ss,i|
+    s_flag = []
+    @forESEGS = []
+    @ELSEGS = []
+    @ESEGS = []
+      for j in 0..(@NELM.to_i-1)
+        @forESEGS[i] ||= []
+        @ELSEGS[i] ||= []
+        s_flag[j] = inside_outside(nslip[i], @Slip_x[i], @Slip_y[i], cent_x[j], cent_y[j])
+        if s_flag[j] == 1
+          @forESEGS[i] << @N_els[j].to_i
+          @ELSEGS[i] << format_i5_output(@N_els[j])
+        end
+      end
+      eseg = @forESEGS[i].length.to_s
+      @ESEGS[i] = format_i5_output(eseg)
+    end
+  end
+
+#-------------------------------------------------------------------------------
+
   def loop_gm
     folder_in = "in"
     if Dir.exist?(folder_in)
@@ -253,11 +347,19 @@ class FormattingScript
       raise 'folder already exists'
     end
     Dir.mkdir(folder_sc)
-    fname_bat = "Dam1_rev1_125gm.bat"
+    fname_bat = "Dam2_rev1_560gm.bat"
     if File.exist?(fname_bat)
       raise '.bat file already exists'
     end
     bat_file = File.new(fname_bat, 'w')
+    if File.exist?('surfaces.txt')
+      raise 'surfaces file already exists'
+    end
+    surf_file = File.new('surfaces.txt', 'w')
+    if File.exist?('damresponse.txt')
+      raise 'damresponse file already exists'
+    end
+    damr_file = File.new('damresponse.txt', 'w')
     count = 0
     File.open('gmlist.txt', 'r').each_line do |gm_name|
       count = count + 1
@@ -282,18 +384,21 @@ class FormattingScript
         end
       end
       countf = "%.4d" % count
-      f_in = "A#{countf}.in"
-      f_out = "A#{countf}.out"
-      @AFILEOUT = "A#{countf}"
-      @KFILEOUT = "A#{countf}"
+      f_in = "B#{countf}.in"
+      f_out = "B#{countf}.out"
+      f_qsc = "B#{countf}.QSC"
+      f_acc = "B#{countf}.acc"
+      @AFILEOUT = "B#{countf}"
+      @KFILEOUT = "B#{countf}"
       fname_in = File.join(folder_in,f_in)
+      fname_out = File.join()
       if File.exist?(fname_in)
         raise '.in file already exists'
       end
       @output_file = File.new(fname_in, 'w')
       write_infile
       close_file
-      f_sc = "Quad4MU-A#{countf}.sc"
+      f_sc = "Quad4MU-B#{countf}.sc"
       fname_sc = File.join(folder_sc,f_sc)
       if File.exist?(fname_sc)
         raise '.sc file already exists'
@@ -315,9 +420,17 @@ class FormattingScript
       sc_file.close
       bat_file << "Quad4MU.exe < sc\\#{f_sc}"
       bat_file << "\r\n"
+      surf_file << "../out/#{f_qsc}"
+      surf_file << "\n"
+      damr_file << "../out/#{f_acc}"
+      damr_file << "\n"
     end
     bat_file.close
+    surf_file.close
+    damr_file.close
   end
+
+#-------------------------------------------------------------------------------
 
   def write_infile
     @output_file << @TITLE
@@ -428,7 +541,7 @@ class FormattingScript
       @output_file << @DENS[j]
       for k in 1..2
         if @El_mats[j] == k
-          if @DRYs[k].include?(j+1)
+          if @DRYs.include?(j+1)
             @output_file << @PODs[k]
           else
             @output_file << @POWs[k]
@@ -458,14 +571,7 @@ class FormattingScript
     end
   end
 
-
-#  def calc_prinput
-    # calling fortran script
-    # input_string = "..\\in\\#{filename}.in\n Mat.o8\n ..\\out\\\n #{filename}.out\n q"
-    # result = `quad4MU.exe < #{input_string}`
-    # puts "system said: #{result}"
-#  end
-
+#-------------------------------------------------------------------------------
 
   def format_i5_output(number)
     if number.length > 5
@@ -474,24 +580,67 @@ class FormattingScript
     number.rjust(5)
   end
 
+#-------------------------------------------------------------------------------
 
   def format_f10_output(number)
-    if number.length > 10
-      number = truncate(number, 10)
+    if number.length > 9
+      number = truncate(number, 9)
     end
-    if number.length > 10
+    if number.length > 9
       raise 'Too many digits'
     end
     number.rjust(10)
   end
 
+#-------------------------------------------------------------------------------
+
   def truncate(string, max)
     string.length > max ? "#{string[0...max]}" : string
   end
 
+#-------------------------------------------------------------------------------
+
   def close_file
     @output_file.close
   end
+
+#-------------------------------------------------------------------------------
+
+  def inside_outside(npoly, xpoly, ypoly, xpoint, ypoint)
+    pi = 4 * Math.atan(1)
+    twopi = 2 * pi
+    sumtheta = 0.0
+
+    for i in 0..(npoly-1)
+#     compute azimuth to ends of segments
+      dy1 = ypoly[i] - ypoint
+      dy2 = ypoly[i+1] - ypoint
+      dx1 = xpoly[i] - xpoint
+      dx2 = xpoly[i+1] - xpoint
+      theta1 = Math.atan2(dy1,dx1)
+      theta2 = Math.atan2(dy2,dx2)
+      dtheta = theta2 - theta1
+#     check if theta range is greater than pi (wrap around)
+      if dtheta > pi
+        dtheta = dtheta - twopi
+      elsif dtheta < -pi
+        dtheta = dtheta + twopi
+      end
+#     compute sum of azimuth ranges
+      sumtheta = sumtheta + dtheta
+    end
+
+#   determine if point is inside polygon
+    test1 = (sumtheta.abs - twopi).abs
+    tol = 0.01
+    if test1 < tol
+      flag = 1
+    else
+      flag = 0
+    end
+  end
+
+#-------------------------------------------------------------------------------
 
 end
 

@@ -23,8 +23,11 @@ c       read in run file
         read (a,*) Ky2    
 
 c       write headers for output files
-        write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 ', 'fmfMax5 ', 'fmfMax6 '
-        write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 ', 'smfMax5 ', 'smfMax6 '
+c        write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 ', 'fmfMax5 ', 'fmfMax6 '
+c        write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 ', 'smfMax5 ', 'smfMax6 '
+        write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 ', 'fmfMax5 '
+        write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 ', 'smfMax5 '
+        write (aa,*) 'pga ', 'dis1 ', 'disSDOF5 ', 'alpha5 ', 'damping5 '
 c        write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
         
 c       loop over number of files (rock time histories)    
@@ -68,13 +71,14 @@ c         read in dam time history - failure surfaces
             read (cc,'( a1)') dummy
           enddo
           do i=1,npts
-            read (cc,*,end=101) dum2, surf1(i), surf2(i)
+c            read (cc,*,end=101) dum2, surf1(i), surf2(i)
+            read (cc,*,end=101) dum2, surf1(i)
           enddo
  101      close (cc)
 
 c         Newmark method on failure surface time histories
           call Newmark (surf1, nPts, dt, Ky1, vel1, dis1)
-          call Newmark (surf2, nPts, dt, Ky2, vel2, dis2) 
+c          call Newmark (surf2, nPts, dt, Ky2, vel2, dis2) 
         
           npts1 = i-1     
  
@@ -85,7 +89,7 @@ c         compute FFT
           call calcFFT (dam3, nPts, dt, df, mDam3, fasDam3, cuDam3, npts1)
           call calcFFT (dam4, nPts, dt, df, mDam4, fasDam4, cuDam4, npts1)
           call calcFFT (surf1, nPts, dt, df, msurf1, fasSurf1, cuSurf1, npts1)
-          call calcFFT (surf2, nPts, dt, df, msurf2, fasSurf2, cuSurf2, npts1)
+c          call calcFFT (surf2, nPts, dt, df, msurf2, fasSurf2, cuSurf2, npts1)
 
 c         compute raw transfer function
           do i=1,npts1/2
@@ -94,7 +98,7 @@ c         compute raw transfer function
             TF3(i) = fasDam3(i) / fasRock(i)
             TF4(i) = fasDam4(i) / fasRock(i)
             TF5(i) = fasSurf1(i) / fasRock(i)
-            TF6(i) = fasSurf2(i) / fasRock(i)
+c            TF6(i) = fasSurf2(i) / fasRock(i)
           enddo
 
 c         smooth FFT with a variable smoothing routine
@@ -118,7 +122,7 @@ c        no smoothing for now
            TF3Sm(i) = TF3(i)
            TF4Sm(i) = TF4(i)
            TF5Sm(i) = TF5(i)
-           TF6Sm(i) = TF6(i)
+c           TF6Sm(i) = TF6(i)
          enddo
 
 c         find first and second mode
@@ -127,42 +131,42 @@ c         find first and second mode
           call mode(TF3Sm, df, npts1, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3, mflag3)
           call mode(TF4Sm, df, npts1, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4, mflag4)
           call mode(TF5Sm, df, npts1, fTFmax5, ffmax5, flow5, fhigh5, sTFmax5, sfmax5, slow5, shigh5, mflag5)          
-          call mode(TF6Sm, df, npts1, fTFmax6, ffmax6, flow6, fhigh6, sTFmax6, sfmax6, slow6, shigh6, mflag6)
+c          call mode(TF6Sm, df, npts1, fTFmax6, ffmax6, flow6, fhigh6, sTFmax6, sfmax6, slow6, shigh6, mflag6)
 
 c         fit first mode to SDOF oscillator
-          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
-          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
-          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
-          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
+c          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
+c          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
+c          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
+c          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
           call SDOF(npts, dt, df, TF5Sm, ffmax5, flow5, fhigh5, npts2, damping5, alpha5, response5, TFSDOF5, cuSDOF5)
-          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, fhigh6, npts2, damping6, alpha6, response6, TFSDOF6, cuSDOF6)
+c          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, fhigh6, npts2, damping6, alpha6, response6, TFSDOF6, cuSDOF6)
        
 c         fit second mode to SDOF oscillator
 c         fit first and second mode together
-          if (mflag1 .eq. 2) then   
-            call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
-            call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
-          endif
-          if (mflag2 .eq. 2) then
-            call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
-            call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)          
-          endif
-          if (mflag3 .eq. 2) then           
-            call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
-            call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
-          endif
-          if (mflag4 .eq. 2) then           
-            call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
-            call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
-          endif
-          if (mflag5 .eq. 2) then
-            call SDOF(npts, dt, df, TF5Sm, sfmax5, slow5, shigh5, npts2, damping52, alpha52, response52, TFSDOF52, cuSDOF52)
-            call SDOF2(npts, dt, df, TF5Sm, response5, response52, flow5, shigh5, npts3, responsef5, TF2mode5, cuSDOFf5)
-          endif
-          if (mflag6 .eq. 2) then
-            call SDOF(npts, dt, df, TF6Sm, sfmax6, slow6, shigh6, npts2, damping62, alpha62, response62, TFSDOF62, cuSDOF62)
-            call SDOF2(npts, dt, df, TF6Sm, response6, response62, flow6, shigh6, npts3, responsef6, TF2mode6, cuSDOFf6)  
-          endif    
+c          if (mflag1 .eq. 2) then   
+c            call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
+c            call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
+c          endif
+c          if (mflag2 .eq. 2) then
+c            call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
+c            call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)          
+c          endif
+c          if (mflag3 .eq. 2) then           
+c            call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
+c            call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
+c          endif
+c          if (mflag4 .eq. 2) then           
+c            call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
+c            call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
+c          endif
+c          if (mflag5 .eq. 2) then
+c            call SDOF(npts, dt, df, TF5Sm, sfmax5, slow5, shigh5, npts2, damping52, alpha52, response52, TFSDOF52, cuSDOF52)
+c            call SDOF2(npts, dt, df, TF5Sm, response5, response52, flow5, shigh5, npts3, responsef5, TF2mode5, cuSDOFf5)
+c          endif
+c          if (mflag6 .eq. 2) then
+c            call SDOF(npts, dt, df, TF6Sm, sfmax6, slow6, shigh6, npts2, damping62, alpha62, response62, TFSDOF62, cuSDOF62)
+c            call SDOF2(npts, dt, df, TF6Sm, response6, response62, flow6, shigh6, npts3, responsef6, TF2mode6, cuSDOFf6)  
+c          endif    
 
 c         Play with filter, fc = 1.5, nPole = 2
 c          cuSDOF1_f1 = cuSDOF1 
@@ -180,6 +184,10 @@ c         Newmark method on SDOF oscillator response (first mode), Crest only
 c          call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
 c          call respTH2 (RockTH, response1, npts, respTH1)
 c          call Newmark (respTH1, nPts, dt, Ky1, velSDOF1, disSDOF1)
+
+c         Newmark method on SDOF oscillator response (first mode), surface1
+          call respTH (cuRock, cuSDOF5, npts1, npts, mRock, respTH5)
+          call Newmark (respTH5, nPts, dt, Ky1, velSDOF5, disSDOF5)
           
 c         Newmark method on SDOF oscillator response (first and second mode together), Crest only
 c          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
@@ -187,9 +195,9 @@ c          call respTH2 (RockTH, responsef1, npts, respTHf1)
 c          call Newmark (respTHf1, nPts, dt, Ky1, velSDOFf1, disSDOFf1)
 
 c         print acceleration time histories to file
-c          write (19,*) 'time(s) ', 'dam1 ', 'respTH1 ', 'respTHf1 '
+c          write (19,*) 'time(s) ', 'dam1 ', 'dam2 ', 'dam3 ', 'dam4 ', 'rockTH ' 
 c          do i=1, npts
-c            write (19,'( f10.4,3f10.4)') dt*i, dam1(i), respTH1(i), respTHf1(i)
+c            write (19,'( f10.4,5f15.10)') dt*i, dam1(i), dam2(i), dam3(i), dam4(i), rockTH(i)
 c          enddo
 c          close(19)
 
@@ -216,10 +224,20 @@ c          enddo
 c          close(29+iFile)
  
 c         print raw transfer functions to file
+c          write (39+iFile,*) rockfile, pga
+c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4 ', 'TF5 ', 'TF6 ' 
+c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4 ', 'TF5 ' 
+c          do i=1, npts1/2
+c           write (39+iFile,'( f10.4,6f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i), TF5(i), TF6(i)
+c            write (39+iFile,'( f10.4,5f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i), TF5(i)
+c          enddo
+c          close(39+iFile)
+
+c         print raw transfer functions to file
           write (39+iFile,*) rockfile, pga
-          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4 ', 'TF5 ', 'TF6 ' 
+          write (39+iFile,*) 'freq(Hz) ', 'TF5 ' 
           do i=1, npts1/2
-            write (39+iFile,'( f10.4,6f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i), TF5(i), TF6(i)
+            write (39+iFile,'(2f10.4)') df*(i-1), TF5(i)
           enddo
           close(39+iFile)
 
@@ -242,6 +260,18 @@ c          do i=1, npts2/2
 c            write (59+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF1(i), TFSDOF2(i), TFSDOF3(i), TFSDOF4(i)
 c          enddo
 c          close(59+iFile) 
+          
+c         print SDOF transfer functions to file, first mode
+          write (59+iFile,*) rockfile
+          write (59+iFile,*) 'damping5 '
+          write (59+iFile,*) damping5
+          write (59+iFile,*) 'alpha5 '
+          write (59+iFile,*) alpha5
+          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF5 '
+          do i=1, npts2/2
+            write (59+iFile,'(2f10.4)') df*(i-1), TFSDOF5(i)
+          enddo
+          close(59+iFile)
           
 c         print SDOF transfer functions to file, second mode
 c          write (69+iFile,*) rockfile
@@ -271,10 +301,18 @@ c          enddo
 c          close(89+iFile) 
 
 c         print all pga, ffmax, sfmax, Win_len, damping, alpha to one file
-          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4, ffmax5, ffmax6
-          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4, sfmax5, sfmax6
+c          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4, ffmax5, ffmax6
+c          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4, sfmax5, sfmax6
+          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4, ffmax5
+          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4, sfmax5
+          write (aa,*) pga, dis1(npts), disSDOF5(npts), alpha5, damping5
 c          write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4, Win_len5, Win_len6
-        enddo        
+        enddo   
+
+        close(f)
+        close(g)
+        close(aa)        
+     
       end
 
 c -------------------------------------------------------

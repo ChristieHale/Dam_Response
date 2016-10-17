@@ -25,15 +25,15 @@ c         accleration impulse
           accel(100) = 1.
           omega = ffmax * 2.*pi
           
-c         loop over damping from 0.08 to 0.20
-          do k=1,13
+c         loop over damping from 0.08 to 0.25
+          do k=1,18
             trial_d(k) = 0.07 +0.01*k
 c           calculate SDOF response TH
             call coeff (omega, trial_d(k), dt)
             call brs (accel, omega, trial_d(k), npts, response1) 
-c           loop over alpha from 0.7 to 1.65
-            do l=1,20
-              trial_a(l) = 0.65 + 0.05*l
+c           loop over alpha from 0.5 to 1.8
+            do l=1,27
+              trial_a(l) = 0.45 + 0.05*l
               response2 = response1*trial_a(l)              
               do i=1,npts 
                 response_save(k,l,i) = response2(i)
