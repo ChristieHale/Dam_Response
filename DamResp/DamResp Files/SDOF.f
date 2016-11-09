@@ -1,85 +1,98 @@
 c-----------------------------------------------------------------------
 
-      subroutine SDOF(npts, dt, df, TFSm, ffmax, flow, fhigh, npts2, damping, alpha, 
+      subroutine SDOF(npts, dt, df, TFSm, ffmax, flow, flow1, fhigh, npts2, damping, alpha, 
      1                response, TFSDOF, cu)
       
        implicit none
        include 'max_dims.H'
        
        real accel(MAXPTS), omega, pi, dt, df, response(MAXPTS)
-       real response1(MAXPTS), response2(MAXPTS), response_save(MAXCOEF,MAXCOEF,MAXPTS)
+       real response1(MAXPTS), response2(MAXPTS)
        real TFSDOF_trial(MAXPTS), TFSDOF(MAXPTS), min_rms
        real trial_d(MAXCOEF), trial_a(MAXCOEF), rms_sum(MAXCOEF,MAXCOEF)
-       real flow, fhigh, TFSDOF_trial2(MAXCOEF,MAXCOEF,MAXPTS), TFSm(MAXPTS)
+       real flow, flow1, fhigh, TFSm(MAXPTS)
        real damping, alpha, ffmax
-       complex cu(MAXPTS), cu_trial(MAXPTS), cu_trial2(MAXCOEF,MAXCOEF,MAXPTS)
-       integer i, k, l, m, n, npts, npts2, iflow, ifhigh, mtrial
+       complex cu(MAXPTS), cu_trial(MAXPTS)
+       integer i, k, l, npts, npts2, iflow, iflow1, ifhigh, mtrial
        parameter (pi=3.14159)
 
 c         initialize acceleration values to zero
           do i=1,npts
             accel(i) = 0.
+            response(i) = 0.0
+            response1(i) = 0.
+            response2(i) = 0.
           enddo
+          
+c         initialize damping and alpha to zero
+          do i=1,MAXCOEF
+            trial_d(i) = 0.0
+            trial_a(i) = 0.0
+          enddo
+          
+c         initialize TFSDOF_trial to zero
+          do i=1,npts2
+            TFSDOF(i) = 0.0
+            cu(i) = 0.0
+            TFSDOF_trial(i) = 0.0
+          enddo         
           
 c         accleration impulse          
           accel(100) = 1.
           omega = ffmax * 2.*pi
           
-c         loop over damping from 0.08 to 0.25
-          do k=1,18
-            trial_d(k) = 0.07 +0.01*k
+c         loop over damping from 0.04 to 0.4
+          do k=1,37
+            trial_d(k) = 0.03 + 0.01*k
 c           calculate SDOF response TH
             call coeff (omega, trial_d(k), dt)
             call brs (accel, omega, trial_d(k), npts, response1) 
-c           loop over alpha from 0.5 to 1.8
-            do l=1,27
-              trial_a(l) = 0.45 + 0.05*l
-              response2 = response1*trial_a(l)              
-              do i=1,npts 
-                response_save(k,l,i) = response2(i)
-              enddo
-c             calculate SDOF FFT / TF
-              call calcFFT (response2, npts, dt, df, mtrial, TFSDOF_trial, cu_trial, npts2) 
-              do i=1,npts2              
-                TFSDOF_trial2(k,l,i) = TFSDOF_trial(i)
-                cu_trial2(k,l,i) = cu_trial(i)
+c           loop over alpha from 0.6 to 4.5
+            do l=1,40
+              trial_a(l) = 0.5 + 0.1*l
+              do i=1,npts
+                response2(i) = response1(i)*trial_a(l)
               enddo              
+c             calculate SDOF FFT / TF
+              call calcFFT (response2, npts, dt, df, mtrial, TFSDOF_trial, cu_trial, npts2)              
               iflow = nint(flow/df + 1)
               ifhigh = nint(fhigh/df + 1)          
               rms_sum(k,l) = 0.0              
               do i=iflow, ifhigh                
-                rms_sum(k,l) = rms_sum(k,l) + (TFSDOF_trial2(k,l,i) - TFSm(i))**2.
-              enddo                 
+                rms_sum(k,l) = rms_sum(k,l) + (TFSDOF_trial(i) - TFSm(i))**2.
+              enddo         
             enddo
           enddo
 
 c         find best fit
           min_rms = 10.**6.
-          do k=1,13
-            do l=1,20            
+          do k=1,37
+            do l=1,40            
               if (rms_sum(k,l) .lt. min_rms) then
                 min_rms = rms_sum(k,l)
                 damping = trial_d(k)
                 alpha = trial_a(l)
-                m = k
-                n = l
               endif
             enddo
           enddo  
           
-c        save final response
+c        rerun to save final response
+         call coeff (omega, damping, dt)
+         call brs (accel, omega, damping, npts, response1) 
          do i=1,npts
-           response(i) = 0.0
-           response(i) = response_save(m,n,i)
-         enddo 
-         
-c        save final TFSDOF and cu 
+           response(i) = response1(i)*alpha
+         enddo              
+         call calcFFT (response, npts, dt, df, mtrial, TFSDOF, cu, npts2)   
+         iflow1 = nint(flow1/df + 1)           
          do i=1,npts2
-           TFSDOF(i) = 0.0
-           TFSDOF(i) = TFSDOF_trial2(m,n,i)
-           cu(i) = 0.0
-           cu(i) = cu_trial2(m,n,i)
-         enddo       
+           if (alpha .lt. 1. .and. i .lt. iflow .and. TFSDOF(i) .lt. 1.0) then
+             cu(i) = cu(i)*(1./TFSDOF(i))
+             TFSDOF(i) = 1.0
+           else if (alpha .gt. 1. .and. i .lt. iflow1 .and. TFSDOF(i) .gt. 1.0) then
+             cu(i) = cu(i)*(1./TFSDOF(i))
+             TFSDOF(i) = 1.0
+           endif
+         enddo               
           
       return
       end

@@ -23,15 +23,21 @@ c       read in run file
         read (a,*) Ky2    
 
 c       write headers for output files
-c        write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 ', 'fmfMax5 ', 'fmfMax6 '
-c        write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 ', 'smfMax5 ', 'smfMax6 '
-        write (f,*) 'pga ', 'fmfMax1 ', 'fmfMax2 ', 'fmfMax3 ', 'fmfMax4 ', 'fmfMax5 '
-        write (g,*) 'pga ', 'smfMax1 ', 'smfMax2 ', 'smfMax3 ', 'smfMax4 ', 'smfMax5 '
-        write (aa,*) 'pga ', 'dis1 ', 'disSDOF5 ', 'alpha5 ', 'damping5 '
-c        write (h,*) 'pga ', 'Win_len1 ', 'Win_len2 ', 'Win_len3 ', 'Win_len4 '
+        write (f,*) 'pga ', 'ffmax5 ', 'ffmax6 '
+        write (g,*) 'pga ', 'pga_c '
+        write (h,*) 'pga ', 'alpha5 ', 'damping5 ', 'alpha6 ', 'damping6 '
+        write (aa,*) 'pga ', 'dis1p ', 'disSDOF5p ', 'dis1n ', 'disSDOF5n ', 'dis2p ', 'disSDOF6p ',
+     1               'dis2n ', 'disSDOF6n ' 
+        write (dd,*) 'pga ', 'Win_len5 ', 'Win_len6 '
         
 c       loop over number of files (rock time histories)    
         do iFile=1,nFiles
+
+c         initialize arrays
+          call init(rockTH, surf1, surf2, fasRock, fasSurf1, fasSurf2, TF5, 
+     1              TF5Sm, TF6, TF6Sm, vel1p, dis1p, vel2p, dis2p, vel1n, 
+     2              dis1n, vel2n, dis2n, velSDOF5p, disSDOF5p, velSDOF5n, 
+     3              disSDOF5n, velSDOF6p, disSDOF6p, velSDOF6n, disSDOF6n)
 
 c         read in rock time history (NGA-West2)
           read (b,'( a80)') rockfile
@@ -63,6 +69,12 @@ c         read in dam time history - nodes
           enddo
  100      close (e)
  
+c         find PGA crest
+          pga_c = 0.
+          do i=1,npts
+            if ( abs( dam4(i)) .gt. pga_c ) pga_c = abs(dam4(i))
+          enddo
+ 
 c         read in dam time history - failure surfaces
           read (bb,'( a80)') surfacefile
           write (*,'( i5, a80)') iFile, surfacefile
@@ -71,149 +83,99 @@ c         read in dam time history - failure surfaces
             read (cc,'( a1)') dummy
           enddo
           do i=1,npts
-c            read (cc,*,end=101) dum2, surf1(i), surf2(i)
-            read (cc,*,end=101) dum2, surf1(i)
+            read (cc,*,end=101) dum2, surf1(i), surf2(i)
           enddo
  101      close (cc)
 
-c         Newmark method on failure surface time histories
-          call Newmark (surf1, nPts, dt, Ky1, vel1, dis1)
-c          call Newmark (surf2, nPts, dt, Ky2, vel2, dis2) 
-        
+c         Newmark method on failure surface time histories, positive acc
+          call Newmark (surf1, npts, dt, Ky1, vel1p, dis1p)
+          call Newmark (surf2, npts, dt, Ky2, vel2p, dis2p) 
+          
+          do i=1,npts
+            surf1n(i) = surf1(i)*(-1.)
+            surf2n(i) = surf2(i)*(-1.)
+          enddo     
+          
+c         Newmark method on failure surface time histories, negative acc
+          call Newmark (surf1n, npts, dt, Ky1, vel1n, dis1n)
+          call Newmark (surf2n, npts, dt, Ky2, vel2n, dis2n)
+   
           npts1 = i-1     
  
 c         compute FFT
-          call calcFFT (rockTH, nPts, dt, df, mRock, fasRock, cuRock, npts1)
-          call calcFFT (dam1, nPts, dt, df, mDam1, fasDam1, cuDam1, npts1)
-          call calcFFT (dam2, nPts, dt, df, mDam2, fasDam2, cuDam2, npts1)
-          call calcFFT (dam3, nPts, dt, df, mDam3, fasDam3, cuDam3, npts1)
-          call calcFFT (dam4, nPts, dt, df, mDam4, fasDam4, cuDam4, npts1)
-          call calcFFT (surf1, nPts, dt, df, msurf1, fasSurf1, cuSurf1, npts1)
-c          call calcFFT (surf2, nPts, dt, df, msurf2, fasSurf2, cuSurf2, npts1)
+          call calcFFT (rockTH, npts, dt, df, mRock, fasRock, cuRock, npts1)
+          call calcFFT (surf1, npts, dt, df, msurf1, fasSurf1, cuSurf1, npts1)
+          call calcFFT (surf2, npts, dt, df, msurf2, fasSurf2, cuSurf2, npts1)
 
 c         compute raw transfer function
           do i=1,npts1/2
-            TF1(i) = fasDam1(i) / fasRock(i)
-            TF2(i) = fasDam2(i) / fasRock(i)
-            TF3(i) = fasDam3(i) / fasRock(i)
-            TF4(i) = fasDam4(i) / fasRock(i)
             TF5(i) = fasSurf1(i) / fasRock(i)
-c            TF6(i) = fasSurf2(i) / fasRock(i)
+            TF6(i) = fasSurf2(i) / fasRock(i)
           enddo
 
-c         smooth FFT with a variable smoothing routine
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasDam1, df, sigmax, TF1Sm, Win_len1)     
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasDam2, df, sigmax, TF2Sm, Win_len2)
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasDam3, df, sigmax, TF3Sm, Win_len3)     
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasDam4, df, sigmax, TF4Sm, Win_len4)     
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasSurf1, df, sigmax, TF5Sm, Win_len5)     
-c          call var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1, 
-c     1                    fasSurf2, df, sigmax, TF6Sm, Win_len6)     
+c         smooth FFT with one pass of smoothing
+c           call once_smooth(Win_len0, WinType, fasRock, npts1, fasSurf1, TF5Sm)
+c           call once_smooth(Win_len0, WinType, fasRock, npts1, fasSurf2, TF6Sm)
+
+c         smooth FFT with a variable smoothing routine    
+          call var_smooth(Win_len0, loopmax, WinType, fasRock, npts1, 
+     1                    fasSurf1, df, sigmax, TF5Sm, Win_len5)     
+          call var_smooth(Win_len0, loopmax, WinType, fasRock, npts1, 
+     1                    fasSurf2, df, sigmax, TF6Sm, Win_len6)     
 
 c        no smoothing for now
-         do i=1,npts1/2
-           TF1Sm(i) = TF1(i)
-           TF2Sm(i) = TF2(i)
-           TF3Sm(i) = TF3(i)
-           TF4Sm(i) = TF4(i)
-           TF5Sm(i) = TF5(i)
+c         do i=1,npts1/2
+c           TF5Sm(i) = TF5(i)
 c           TF6Sm(i) = TF6(i)
-         enddo
+c         enddo
 
-c         find first and second mode
-          call mode(TF1Sm, df, npts1, fTFmax1, ffmax1, flow1, fhigh1, sTFmax1, sfmax1, slow1, shigh1, mflag1)
-          call mode(TF2Sm, df, npts1, fTFmax2, ffmax2, flow2, fhigh2, sTFmax2, sfmax2, slow2, shigh2, mflag2)
-          call mode(TF3Sm, df, npts1, fTFmax3, ffmax3, flow3, fhigh3, sTFmax3, sfmax3, slow3, shigh3, mflag3)
-          call mode(TF4Sm, df, npts1, fTFmax4, ffmax4, flow4, fhigh4, sTFmax4, sfmax4, slow4, shigh4, mflag4)
-          call mode(TF5Sm, df, npts1, fTFmax5, ffmax5, flow5, fhigh5, sTFmax5, sfmax5, slow5, shigh5, mflag5)          
-c          call mode(TF6Sm, df, npts1, fTFmax6, ffmax6, flow6, fhigh6, sTFmax6, sfmax6, slow6, shigh6, mflag6)
+c         find first mode only
+          call mode1(TF5Sm, df, npts1, fTFmax5, ffmax5, flow5, flow15, fhigh5)
+          call mode1(TF6Sm, df, npts1, fTFmax6, ffmax6, flow6, flow16, fhigh6)
 
-c         fit first mode to SDOF oscillator
-c          call SDOF(npts, dt, df, TF1Sm, ffmax1, flow1, fhigh1, npts2, damping1, alpha1, response1, TFSDOF1, cuSDOF1)
-c          call SDOF(npts, dt, df, TF2Sm, ffmax2, flow2, fhigh2, npts2, damping2, alpha2, response2, TFSDOF2, cuSDOF2)
-c          call SDOF(npts, dt, df, TF3Sm, ffmax3, flow3, fhigh3, npts2, damping3, alpha3, response3, TFSDOF3, cuSDOF3)
-c          call SDOF(npts, dt, df, TF4Sm, ffmax4, flow4, fhigh4, npts2, damping4, alpha4, response4, TFSDOF4, cuSDOF4)    
-          call SDOF(npts, dt, df, TF5Sm, ffmax5, flow5, fhigh5, npts2, damping5, alpha5, response5, TFSDOF5, cuSDOF5)
-c          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, fhigh6, npts2, damping6, alpha6, response6, TFSDOF6, cuSDOF6)
-       
-c         fit second mode to SDOF oscillator
-c         fit first and second mode together
-c          if (mflag1 .eq. 2) then   
-c            call SDOF(npts, dt, df, TF1Sm, sfmax1, slow1, shigh1, npts2, damping12, alpha12, response12, TFSDOF12, cuSDOF12)
-c            call SDOF2(npts, dt, df, TF1Sm, response1, response12, flow1, shigh1, npts3, responsef1, TF2mode1, cuSDOFf1)
-c          endif
-c          if (mflag2 .eq. 2) then
-c            call SDOF(npts, dt, df, TF2Sm, sfmax2, slow2, shigh2, npts2, damping22, alpha22, response22, TFSDOF22, cuSDOF22)
-c            call SDOF2(npts, dt, df, TF2Sm, response2, response22, flow2, shigh2, npts3, responsef2, TF2mode2, cuSDOFf2)          
-c          endif
-c          if (mflag3 .eq. 2) then           
-c            call SDOF(npts, dt, df, TF3Sm, sfmax3, slow3, shigh3, npts2, damping32, alpha32, response32, TFSDOF32, cuSDOF32)
-c            call SDOF2(npts, dt, df, TF3Sm, response3, response32, flow3, shigh3, npts3, responsef3, TF2mode3, cuSDOFf3)
-c          endif
-c          if (mflag4 .eq. 2) then           
-c            call SDOF(npts, dt, df, TF4Sm, sfmax4, slow4, shigh4, npts2, damping42, alpha42, response42, TFSDOF42, cuSDOF42)
-c            call SDOF2(npts, dt, df, TF4Sm, response4, response42, flow4, shigh4, npts3, responsef4, TF2mode4, cuSDOFf4)
-c          endif
-c          if (mflag5 .eq. 2) then
-c            call SDOF(npts, dt, df, TF5Sm, sfmax5, slow5, shigh5, npts2, damping52, alpha52, response52, TFSDOF52, cuSDOF52)
-c            call SDOF2(npts, dt, df, TF5Sm, response5, response52, flow5, shigh5, npts3, responsef5, TF2mode5, cuSDOFf5)
-c          endif
-c          if (mflag6 .eq. 2) then
-c            call SDOF(npts, dt, df, TF6Sm, sfmax6, slow6, shigh6, npts2, damping62, alpha62, response62, TFSDOF62, cuSDOF62)
-c            call SDOF2(npts, dt, df, TF6Sm, response6, response62, flow6, shigh6, npts3, responsef6, TF2mode6, cuSDOFf6)  
-c          endif    
+c         fit first mode to SDOF oscillator    
+          call SDOF(npts, dt, df, TF5Sm, ffmax5, flow5, flow15, fhigh5, npts2, damping5, alpha5, 
+     1              response5, TFSDOF5, cuSDOF5)
+          call SDOF(npts, dt, df, TF6Sm, ffmax6, flow6, flow16, fhigh6, npts2, damping6, alpha6, 
+     1              response6, TFSDOF6, cuSDOF6)   
 
-c         Play with filter, fc = 1.5, nPole = 2
-c          cuSDOF1_f1 = cuSDOF1 
-c          call hipass(1.5, 2, df, npts2, cuSDOF1_f1)          
-c         Compute FAS of filtered
-c          do i=1,npts2
-c	    SDOF1_f1(i) = cabs(cuSDOF1_f1(i))
-c          enddo
-          
-c         Newmark method on SDOF oscillator response (first mode), Crest only, w/ hipass filter
-c          call respTH (cuRock, cuSDOF1_f1, npts1, npts, mRock, respTH1_f1) 
-c          call Newmark (respTH1_f1, nPts, dt, Ky1, velSDOF1_f1, disSDOF1_f1)        
-          
-c         Newmark method on SDOF oscillator response (first mode), Crest only
-c          call respTH (cuRock, cuSDOF1, npts1, npts, mRock, respTH1)
-c          call respTH2 (RockTH, response1, npts, respTH1)
-c          call Newmark (respTH1, nPts, dt, Ky1, velSDOF1, disSDOF1)
-
-c         Newmark method on SDOF oscillator response (first mode), surface1
+c         Newmark method on SDOF oscillator response (first mode)
           call respTH (cuRock, cuSDOF5, npts1, npts, mRock, respTH5)
-          call Newmark (respTH5, nPts, dt, Ky1, velSDOF5, disSDOF5)
+          call respTH (cuRock, cuSDOF6, npts1, npts, mRock, respTH6)
+          call Newmark (respTH5, npts, dt, Ky1, velSDOF5p, disSDOF5p)
+          call Newmark (respTH6, npts, dt, Ky2, velSDOF6p, disSDOF6p)
           
-c         Newmark method on SDOF oscillator response (first and second mode together), Crest only
-c          call respTH (cuRock, cuSDOFf1, npts1, npts, mRock, respTHf1)
-c          call respTH2 (RockTH, responsef1, npts, respTHf1)
-c          call Newmark (respTHf1, nPts, dt, Ky1, velSDOFf1, disSDOFf1)
+          do i=1,npts
+            respTH5n(i) = respTH5(i)*(-1.)
+            respTH6n(i) = respTH6(i)*(-1.)
+          enddo
+          
+          call Newmark (respTH5n, npts, dt, Ky1, velSDOF5n, disSDOF5n)
+          call Newmark (respTH6n, npts, dt, Ky2, velSDOF6n, disSDOF6n)
 
 c         print acceleration time histories to file
-c          write (19,*) 'time(s) ', 'dam1 ', 'dam2 ', 'dam3 ', 'dam4 ', 'rockTH ' 
+c          write (19+iFile,*) rockfile, pga
+c          write (19+iFile,*) 'time(s) ', 'surf1 ' 
 c          do i=1, npts
-c            write (19,'( f10.4,5f15.10)') dt*i, dam1(i), dam2(i), dam3(i), dam4(i), rockTH(i)
+c            write (19+iFile,'( f10.4,f15.10)') dt*i, surf1(i)
 c          enddo
-c          close(19)
+c          close(19+iFile)
 
 c         print velocity time histories to file
-c          write (20,*) 'time(s) ', 'vel1(cm/s) ', 'velSDOF1(cm/s) ', 'velSDOFf1(cm/s) '
+c          write (29+iFile,*) rockfile, pga
+c          write (29+iFile,*) 'time(s) ', 'vel1(cm/s) '
 c          do i=1, npts
-c            write (20,'( f10.4,3f10.4)') dt*i, vel1(i), velSDOF1(i), velSDOFf1(i)
+c            write (29+iFile,'( f10.4,f15.10)') dt*i, vel1(i)
 c          enddo
-c          close(20)
+c          close(29+iFile)
 
 c         print displacement time histories to file
-c          write (21,*) 'time(s) ', 'dis1(cm) ', 'disSDOF1(cm) ', 'disSDOFf1(cm) ', 'disSDOF1_f1(cm) '
+c          write (39+iFile,*) rockfile, pga
+c          write (39+iFile,*) 'time(s) ', 'dis1(cm) '
 c          do i=1, npts
-c            write (21,'( f10.4,4f10.4)') dt*i, dis1(i), disSDOF1(i), disSDOFf1(i), disSDOF1_f1(i)
+c            write (39+iFile,'( f10.4,f15.10)') dt*i, dis1(i)
 c          enddo
-c          close(21)
+c          close(39+iFile)
 
 c         print raw fas to file
 c          write (29+iFile,*) rockfile, pga
@@ -222,100 +184,114 @@ c          do i=1, npts1
 c            write (29+iFile,'( f10.4,5f10.4)') df*(i-1), fasRock(i), fasDam1(i), fasDam2(i), fasDam3(i), fasDam4(i)
 c          enddo
 c          close(29+iFile)
- 
-c         print raw transfer functions to file
-c          write (39+iFile,*) rockfile, pga
-c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4 ', 'TF5 ', 'TF6 ' 
-c          write (39+iFile,*) 'freq(Hz) ', 'TF1 ', 'TF2 ', 'TF3 ', 'TF4 ', 'TF5 ' 
-c          do i=1, npts1/2
-c           write (39+iFile,'( f10.4,6f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i), TF5(i), TF6(i)
-c            write (39+iFile,'( f10.4,5f10.4)') df*(i-1), TF1(i), TF2(i), TF3(i), TF4(i), TF5(i)
-c          enddo
-c          close(39+iFile)
 
 c         print raw transfer functions to file
           write (39+iFile,*) rockfile, pga
-          write (39+iFile,*) 'freq(Hz) ', 'TF5 ' 
+          write (39+iFile,*) 'freq(Hz) ', 'TF5 ', 'TF6 ' 
           do i=1, npts1/2
-            write (39+iFile,'(2f10.4)') df*(i-1), TF5(i)
+            write (39+iFile,'(3f10.4)') df*(i-1), TF5(i), TF6(i)
           enddo
           close(39+iFile)
-
-c         print smooth transfer functions to file
-c          write (49+iFile,*) rockfile
-c          write (49+iFile,*) 'freq(Hz) ', 'TF1Sm ', 'TF2Sm ', 'TF3Sm ', 'TF4Sm ', 'TF5Sm ', 'TF6Sm ' 
-c          do i=1, npts1/2
-c            write (49+iFile,'( f10.4,6f10.4)') df*(i-1), TF1Sm(i), TF2Sm(i), TF3Sm(i), TF4Sm(i), TF5Sm(i), TF6Sm(i)
-c          enddo
-c          close(49+iFile) 
           
-c         print SDOF transfer functions to file, first mode
-c          write (59+iFile,*) rockfile
-c          write (59+iFile,*) 'damping1 ', 'damping2 ', 'damping3 ', 'damping4 '
-c          write (59+iFile,*) damping1, damping2, damping3, damping4
-c          write (59+iFile,*) 'alpha1 ', 'alpha2 ', 'alpha3 ', 'alpha4 '
-c          write (59+iFile,*) alpha1, alpha2, alpha3, alpha4
-c          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'TFSDOF2 ', 'TFSDOF3 ', 'TFSDOF4 '
-c          do i=1, npts2/2
-c            write (59+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF1(i), TFSDOF2(i), TFSDOF3(i), TFSDOF4(i)
+c         print complex to file
+c          write (49+iFile,*) rockfile, pga
+c          write (49+iFile,*) 'freq(Hz) ', 'real5 ', 'imag5 ', 'TFSDOF5 ', 'real6 ', 'imag6 ', 'TFSDOF6 '
+c          do i=1, npts1
+c            write (49+iFile,'(7f10.4)') df*(i-1), real(cuSDOF5(i)), aimag(cuSDOF5(i)), TFSDOF5(i),
+c     1             real(cuSDOF6(i)), aimag(cuSDOF6(i)), TFSDOF6(i)
 c          enddo
-c          close(59+iFile) 
+c          close(49+iFile)
           
-c         print SDOF transfer functions to file, first mode
-          write (59+iFile,*) rockfile
-          write (59+iFile,*) 'damping5 '
-          write (59+iFile,*) damping5
-          write (59+iFile,*) 'alpha5 '
-          write (59+iFile,*) alpha5
-          write (59+iFile,*) 'freq(Hz) ', 'TFSDOF5 '
-          do i=1, npts2/2
-            write (59+iFile,'(2f10.4)') df*(i-1), TFSDOF5(i)
+c         print smoothed transfer functions to file
+          write (59+iFile,*) rockfile, pga
+          write (59+iFile,*) 'freq(Hz) ', 'TF5Sm ', 'TF6Sm ' 
+          do i=1, npts1/2
+            write (59+iFile,'(3f10.4)') df*(i-1), TF5Sm(i), TF6Sm(i)
           enddo
           close(59+iFile)
           
-c         print SDOF transfer functions to file, second mode
-c          write (69+iFile,*) rockfile
-c          write (69+iFile,*) 'damping12 ', 'damping22 ', 'damping32 ', 'damping42 '
-c          write (69+iFile,*) damping12, damping22, damping32, damping42
-c          write (69+iFile,*) 'alpha12 ', 'alpha22 ', 'alpha32 ', 'alpha42 '
-c          write (69+iFile,*) alpha12, alpha22, alpha32, alpha42
-c          write (69+iFile,*) 'freq(Hz) ', 'TFSDOF12 ', 'TFSDOF22 ', 'TFSDOF32 ', 'TFSDOF42 '
-c          do i=1, npts2/2
-c            write (69+iFile,'( f10.4,4f10.4)') df*(i-1), TFSDOF12(i), TFSDOF22(i), TFSDOF32(i), TFSDOF42(i)
-c          enddo
-c          close(69+iFile) 
+c         print SDOF transfer functions to file, first mode
+          write (79+iFile,*) rockfile
+          write (79+iFile,*) 'damping5 ', 'alpha5 ', 'damping6 ', 'alpha6 '
+          write (79+iFile,*) damping5, alpha5, damping6, alpha6
+          write (79+iFile,*) 'freq(Hz) ', 'TFSDOF5 ', 'TFSDOF6 '
+          do i=1, npts2/2
+            write (79+iFile,'(3f10.4)') df*(i-1), TFSDOF5(i), TFSDOF6(i)
+          enddo
+          close(79+iFile)
           
-c         print SDOF transfer functions to file, both modes
-c          write (79+iFile,*) rockfile
-c          write (79+iFile,*) 'freq(Hz) ', 'TF2mode1 ', 'TF2mode2 ', 'TF2mode3 ', 'TF2mode4 '
-c          do i=1, npts3/2
-c            write (79+iFile,'( f10.4,4f10.4)') df*(i-1), TF2mode1(i), TF2mode2(i), TF2mode3(i), TF2mode4(i)
-c          enddo
-c          close(79+iFile) 
-
-c         print filtered SDOF transfer functions to file, first mode
-c          write (89+iFile,*) 'freq(Hz) ', 'TFSDOF1 ', 'SDOF1_f1 '
-c          do i=1, npts2/2
-c            write (89+iFile,'( f10.4,2f10.4)') df*(i-1), TFSDOF1(i), SDOF1_f1(i)
-c          enddo
-c          close(89+iFile) 
-
-c         print all pga, ffmax, sfmax, Win_len, damping, alpha to one file
-c          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4, ffmax5, ffmax6
-c          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4, sfmax5, sfmax6
-          write (f,*) pga, ffmax1, ffmax2, ffmax3, ffmax4, ffmax5
-          write (g,*) pga, sfmax1, sfmax2, sfmax3, sfmax4, sfmax5
-          write (aa,*) pga, dis1(npts), disSDOF5(npts), alpha5, damping5
-c          write (h,*) pga, Win_len1, Win_len2, Win_len3, Win_len4, Win_len5, Win_len6
+c         print all pga, ffmax, alpha, damping to one file
+          write (f,*) pga, ffmax5, ffmax6
+          write (g,*) pga, pga_c
+          write (h,*) pga, alpha5, damping5, alpha6, damping6
+          write (aa,*) pga, dis1p(npts), disSDOF5p(npts), dis1n(npts), disSDOF5n(npts),
+     1                 dis2p(npts), disSDOF6p(npts), dis2n(npts), disSDOF6n(npts)
+          write (dd,*) pga, Win_len5, Win_len6
         enddo   
 
         close(f)
         close(g)
-        close(aa)        
+        close(h)   
+        close(aa)   
+        close(dd)
+     
+        write (*,*) 'Finished'
+        pause
      
       end
 
-c -------------------------------------------------------
+c ----------------------------------------------------------------------
+
+      subroutine init (rockTH, surf1, surf2, fasRock, fasSurf1, fasSurf2, TF5, 
+     1                 TF5Sm, TF6, TF6Sm, vel1p, dis1p, vel2p, dis2p, vel1n, 
+     2                 dis1n, vel2n, dis2n, velSDOF5p, disSDOF5p, velSDOF5n, 
+     3                 disSDOF5n, velSDOF6p, disSDOF6p, velSDOF6n, disSDOF6n)
+      
+      implicit none
+      include 'max_dims.h'
+      
+      integer i
+      real rockTH(MAXPTS), surf1(MAXPTS), surf2(MAXPTS), fasRock(MAXPTS), 
+     1     fasSurf1(MAXPTS), fasSurf2(MAXPTS), TF5(MAXPTS), TF5Sm(MAXPTS),  
+     2     TF6(MAXPTS), TF6Sm(MAXPTS), vel1p(MAXPTS), dis1p(MAXPTS), 
+     3     vel2p(MAXPTS), dis2p(MAXPTS), vel1n(MAXPTS), dis1n(MAXPTS),  
+     4     vel2n(MAXPTS), dis2n(MAXPTS), velSDOF5p(MAXPTS), disSDOF5p(MAXPTS), 
+     5     velSDOF5n(MAXPTS), disSDOF5n(MAXPTS), velSDOF6p(MAXPTS),
+     6     disSDOF6p(MAXPTS), velSDOF6n(MAXPTS), disSDOF6n(MAXPTS)
+      
+      do i=1, MAXPTS
+        rockTH(i) = 0.0
+        surf1(i) = 0.0
+        surf2(i) = 0.0
+        fasRock(i) = 0.0
+        fasSurf1(i) = 0.0
+        fasSurf2(i) = 0.0
+        TF5(i) = 0.0
+        TF5Sm(i) = 0.0
+        TF6(i) = 0.0
+        TF6Sm(i) = 0.0
+        vel1p(i) = 0.0
+        dis1p(i) = 0.0
+        vel2p(i) = 0.0
+        dis2p(i) = 0.0
+        vel1n(i) = 0.0
+        dis1n(i) = 0.0
+        vel2n(i) = 0.0
+        dis2n(i) = 0.0
+        velSDOF5p(i) = 0.0
+        disSDOF5p(i) = 0.0
+        velSDOF5n(i) = 0.0
+        disSDOF5n(i) = 0.0
+        velSDOF6p(i) = 0.0
+        disSDOF6p(i) = 0.0
+        velSDOF6n(i) = 0.0
+        disSDOF6n(i) = 0.0
+      enddo
+
+      return
+      end
+
+c ----------------------------------------------------------------------
  
       subroutine coeff (w, beta1, dt1)
       
@@ -400,6 +376,15 @@ c -------------------------------------------------------
      1      slow, shigh, dTFmax, dfmax, dTF_half, dlow, dhigh, ndlow, ndhigh,
      2      TFmax1, TFmax2, fmax1, fmax2, ndTFmax, ndfmax, ndTF_half
        integer i, j, k, m, n, p, q, Hz30, imax_freq, npts1, mflag, imin_freq, Hz0p5
+       
+       fTFmax = 0.0
+       ffmax = 0.0
+       flow = 0.0
+       fhigh = 0.0
+       sTFmax = 0.0
+       sfmax = 0.0
+       slow = 0.0
+       shigh = 0.0
        
 c      limit search to maximum frequency of 30 Hz, or Nyquist, whichever is lower
        Hz30 = nint(30./df + 1)
@@ -529,6 +514,70 @@ c       lower frequency is first mode, higher frequency is second
         endif
         
    50   continue     
+
+      return
+      end
+
+c -------------------------------------------------------
+       
+      subroutine mode1(TFSm, df, npts1, fTFmax, ffmax, flow, flow1, fhigh)
+      
+c     rewrite subroutine mode with only one mode (don't search for second peak) 
+      
+       implicit none
+       include 'max_dims.h'
+       
+       real TFSm(MAXPTS), df, fTFmax, ffmax, flow, flow1, fhigh, fTF_half, fTF_56
+       integer i, m, Hz30, imax_freq, npts1, imin_freq, Hz0p5
+       
+       fTFmax = 0.0
+       ffmax = 0.0
+       flow = 0.0
+       flow1 = 0.0
+       fhigh = 0.0
+       
+c      limit search to maximum frequency of 30 Hz, or Nyquist, whichever is lower
+       Hz30 = nint(30./df + 1)
+       imax_freq = min(npts1/2,Hz30)
+       Hz0p5 = nint(0.5/df + 1)
+       imin_freq = Hz0p5
+       
+c       find dominant frequency, assume this is first mode 
+        fTFmax = 0.
+        do i=imin_freq,imax_freq
+          if (TFSm(i) .gt. fTFmax ) then
+            fTFmax = TFSm(i)
+            ffmax = df*(i-1)
+            m = i
+          endif
+        enddo
+
+c       find frequency halfway down peak, lower 
+        fTF_half = ((fTFmax-1) / 2.)+1
+        do i=m,2,-1
+          if ( TFSm(i) .lt. fTF_half) then
+            flow = df*(i-1)
+            goto 10
+          endif
+        enddo  
+        
+c       find frequency 5/6 down peak, lower 
+   10   fTF_56 = ((fTFmax-1) / 6.)+1
+        do i=m,2,-1
+          if ( TFSm(i) .lt. fTF_56) then
+            flow1 = df*(i-1)
+            goto 20
+          endif
+        enddo  
+
+c       find frequency halfway down peak, upper  
+   20   do i=m,imax_freq
+          if ( TFSm(i) .lt. fTF_half) then
+            fhigh = df*(i-1)
+            goto 30
+          endif
+        enddo   
+   30   continue       
 
       return
       end

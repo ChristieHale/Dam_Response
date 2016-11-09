@@ -1,6 +1,27 @@
 c-----------------------------------------------------------------------
 
-      subroutine var_smooth(Win_len0, loopmax, WinType, Win_len, fasRock, npts1,
+      subroutine once_smooth(Win_len0, WinType, fasRock, npts1, fasDam, TFSm)
+
+      implicit none
+      include 'max_dims.H'
+
+      integer WinType, Win_len0, npts1, j
+      real fasRock(MAXPTS), fasRockSm(MAXPTS), lnfasRockSm(MAXPTS)
+      real fasDam(MAXPTS), fasDamSm(MAXPTS), lnfasDamSm(MAXPTS)
+      real TFSm(MAXPTS)
+ 
+        call smooth(WinType, Win_len0, fasRock, npts1, fasRockSm, lnfasRockSm)
+        call smooth(WinType, Win_len0, fasDam, npts1, fasDamSm, lnfasDamSm)
+
+        do j=1,npts1/2
+          TFSm(j) = fasDamSm(j) / fasRockSm(j)
+        enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+
+      subroutine var_smooth(Win_len0, loopmax, WinType, fasRock, npts1,
      1                     fasDam, df, sigmax, TFSm, Win_lenf)
 
       implicit none
@@ -26,12 +47,10 @@ c           compute variance to determine if more smoothing is necessary
             call variance(Win_len, npts1, df, TFSm, sigmax, sigmaN, xflag)
         
 c           increase window length and smooth again
-            if (xflag .eq. 1) then 
+            if (i .eq. loopmax) then
+              Win_lenf = Win_len
+            else if (xflag .eq. 1) then 
               Win_len = Win_len + 2
-              if (i .eq. loopmax) then
-                write (*,*) 'increase loops for smoothing '
-                pause 
-              endif
             else
               Win_lenf = Win_len
               goto 10              

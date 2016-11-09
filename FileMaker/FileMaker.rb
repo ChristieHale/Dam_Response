@@ -21,7 +21,7 @@ class FormattingScript
 #-------------------------------------------------------------------------------
 
   def open_damfiles
-    @geo_file = Nokogiri::XML(File.open("Dam2_rev1.xml"))
+    @geo_file = Nokogiri::XML(File.open("Dam_50ft.xml"))
     @specs_file = Nokogiri::XML(File.open("specifics.xml"))
   end
 
@@ -205,8 +205,6 @@ class FormattingScript
     @Water_y = watery.map!(&:to_f)
     @POWs = []
     @PODs = []
-    @GMXs = []
-    @Gs = []
     @XLs = []
     @specs_file.xpath("//Material").each do |mat|
       mat_num = mat.attribute('ID').value.to_i
@@ -214,13 +212,15 @@ class FormattingScript
       @POWs[mat_num] = format_f10_output(pow)
       pod = mat.attribute('POD').value
       @PODs[mat_num] = format_f10_output(pod)
-      gmx = mat.attribute('GMX').value
-      @GMXs[mat_num] = format_f10_output(gmx)
-      g = mat.attribute('G').value
-      @Gs[mat_num] = format_f10_output(g)
       xl = mat.attribute('XL').value
       @XLs[mat_num] = format_f10_output(xl)
     end
+    soilvs = @specs_file.xpath("//SoilVs")
+    @vs_a = soilvs.attribute('a').value.to_f
+    @vs_b = soilvs.attribute('b').value.to_f
+    @vs_c = soilvs.attribute('c').value.to_f
+    @vs_d = soilvs.attribute('d').value.to_f
+    @vs_e = soilvs.attribute('e').value.to_f
     line41 = @specs_file.xpath("//Line41")
     @Comment41 = line41.attribute('Comment')
     line42 = @specs_file.xpath("//Line42")
@@ -315,14 +315,14 @@ class FormattingScript
       end
     end
 #   determine if element is inside slip surface
-    @NOSEGS.each_with_index do |ss,i|
-    s_flag = []
     @forESEGS = []
     @ELSEGS = []
     @ESEGS = []
+    @NOSEGS.each_with_index do |ss,i|
+      s_flag = []
+      @forESEGS[i] ||= []
+      @ELSEGS[i] ||= []
       for j in 0..(@NELM.to_i-1)
-        @forESEGS[i] ||= []
-        @ELSEGS[i] ||= []
         s_flag[j] = inside_outside(nslip[i], @Slip_x[i], @Slip_y[i], cent_x[j], cent_y[j])
         if s_flag[j] == 1
           @forESEGS[i] << @N_els[j].to_i
@@ -332,6 +332,56 @@ class FormattingScript
       eseg = @forESEGS[i].length.to_s
       @ESEGS[i] = format_i5_output(eseg)
     end
+#   determine shear wave velocity, Gmax of element
+    crest = @YORDS.map(&:to_f).max
+    g_ft = 32.174
+    cent_z = []
+    vs = []
+    @GMXs = []
+    @Gs = []
+    for j in 0..(@NELM.to_i-1)
+      if @El_mats[j] == 1
+        cent_z[j] = crest - cent_y[j]
+        if cent_z[j] < @vs_d
+          vs[j] = @vs_c
+        else
+          vs[j] = (@vs_a)*(cent_z[j]**@vs_b)
+        end
+        if vs[j] > @vs_e
+          vs[j] = @vs_e
+        end
+      elsif @El_mats[j] == 2
+        vs[j] = @ROCKVS.to_f
+      end
+      gmx = ((vs[j]**2)*@DENS[j].to_f/g_ft)/1000
+      @GMXs[j] = format_f10_output(gmx.to_s)
+      @Gs[j] = @GMXs[j]
+    end
+    if File.exist?('velocity.txt')
+      raise 'velocity file already exists'
+    end
+    vel_file = File.new('velocity.txt', 'w')
+    vel_file << "Element "
+    vel_file << "Cent_x "
+    vel_file << "Cent_y "
+    vel_file << "Cent_z "
+    vel_file << "Vel "
+    vel_file << "\n"
+    for j in 0..(@NELM.to_i-1)
+      if @El_mats[j] == 1
+        vel_file << @N_els[j]
+        vel_file << " "
+        vel_file << cent_x[j]
+        vel_file << " "
+        vel_file << cent_y[j]
+        vel_file << " "
+        vel_file << cent_z[j]
+        vel_file << " "
+        vel_file << vs[j]
+        vel_file << "\n"
+      end
+    end
+    vel_file.close
   end
 
 #-------------------------------------------------------------------------------
@@ -347,7 +397,7 @@ class FormattingScript
       raise 'folder already exists'
     end
     Dir.mkdir(folder_sc)
-    fname_bat = "Dam2_rev1_560gm.bat"
+    fname_bat = "Dam3_rev2.bat"
     if File.exist?(fname_bat)
       raise '.bat file already exists'
     end
@@ -372,24 +422,24 @@ class FormattingScript
           line_4 = line.split(/[\s,]+/)
           npts = line_4[1]
           @npts = format_i5_output(npts)
-          dteq = line_4[3]
-          @dteq = format_f10_output(dteq)
         end
       end
       @pr_file = File.open('prinput.txt').each_with_index do |line,k|
         if  k == count
           pr_data = line.split
+          dteq = pr_data[2]
+          @dteq = format_f10_output(dteq)
           prinput = pr_data[4]
           @prinput = format_f10_output(prinput)
         end
       end
       countf = "%.4d" % count
-      f_in = "B#{countf}.in"
-      f_out = "B#{countf}.out"
-      f_qsc = "B#{countf}.QSC"
-      f_acc = "B#{countf}.acc"
-      @AFILEOUT = "B#{countf}"
-      @KFILEOUT = "B#{countf}"
+      f_in = "C#{countf}.in"
+      f_out = "C#{countf}.out"
+      f_qsc = "C#{countf}.QSC"
+      f_acc = "C#{countf}.acc"
+      @AFILEOUT = "C#{countf}"
+      @KFILEOUT = "C#{countf}"
       fname_in = File.join(folder_in,f_in)
       fname_out = File.join()
       if File.exist?(fname_in)
@@ -398,7 +448,7 @@ class FormattingScript
       @output_file = File.new(fname_in, 'w')
       write_infile
       close_file
-      f_sc = "Quad4MU-B#{countf}.sc"
+      f_sc = "Quad4MU-C#{countf}.sc"
       fname_sc = File.join(folder_sc,f_sc)
       if File.exist?(fname_sc)
         raise '.sc file already exists'
@@ -546,8 +596,12 @@ class FormattingScript
           else
             @output_file << @POWs[k]
           end
-          @output_file << @GMXs[k]
-          @output_file << @Gs[k]
+        end
+      end
+      @output_file << @GMXs[j]
+      @output_file << @Gs[j]
+      for k in 1..2
+        if @El_mats[j] == k
           @output_file << @XLs[k]
           @output_file << "\n"
         end
